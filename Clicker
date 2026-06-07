@@ -1,0 +1,523 @@
+-- Copy and execute directly inside your executor (Delta, Wave, Codex, etc.)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Isolated User Identification Database Formatting
+local FILE_NAME = "CookieSim_V6_User_" .. tostring(LocalPlayer.UserId) .. ".json"
+
+local DefaultData = {
+    Clicks = 0, Rebirths = 0,
+    -- Tier 0: Base Hand Operations
+    ClickLevel = 1, Cursors = 0, Grandmas = 0, Factories = 0, Quantum = 0, Alchemy = 0, Portals = 0, TimeMachines = 0, Antimatter = 0, Prisms = 0,
+    -- Tier 0: Expanded Operations
+    DysonSpheres = 0, GalacticCores = 0, RealityBenders = 0, MultiverseEngines = 0, ChronoEngines = 0, HyperDrives = 0, DarkEnergy = 0, NanoSwarms = 0, VoidCatalysts = 0, Nebulas = 0,
+    -- Rebirth 1+ Milestones
+    SugarFrenzy = 0, GoldenMagnet = 0, CloneArmy = 0, NeuroLink = 0, Singularity = 0, MatrixSim = 0, CosmicBakery = 0, TachyonCon = 0, Interdimensional = 0, LightString = 0,
+    -- Rebirth 5+ Cosmic Matrices
+    AbsoluteZero = 0, ParadoxCore = 0, GodFinger = 0, OmniPresence = 0, RealityShatter = 0, EternityDrive = 0, InfInfinity = 0, OmegaPoint = 0, ConceptBake = 0, AstralForge = 0,
+    -- Rebirth 10+ Meta Entities 
+    LogicWeaver = 0, TimeFracture = 0, DimensionSplicer = 0, QuarkCondenser = 0, SuperstringArray = 0, DarkFlow = 0, PlanckEngine = 0, HologramWorld = 0, KarmaBake = 0, NirvanaState = 0,
+    -- Rebirth 25+ Reality Overlords
+    VoidLord = 0, EntityZero = 0, Chronoswill = 0, MultiverseSpire = 0, InfinityGlove = 0, CosmicPulse = 0, SingularityCrown = 0, OverlordCore = 0, FinalityPoint = 0
+}
+
+local PlayerData = {}
+for k, v in pairs(DefaultData) do PlayerData[k] = v end
+
+-- Data Restoration Hydration Pipeline
+if isfile and isfile(FILE_NAME) then
+    local success, content = pcall(readfile, FILE_NAME)
+    if success then
+        local decoded = HttpService:JSONDecode(content)
+        if decoded then 
+            for k, v in pairs(decoded) do PlayerData[k] = v end 
+        end
+    end
+end
+
+local function saveProgress()
+    if writefile then
+        local success, encoded = pcall(HttpService.JSONEncode, HttpService, PlayerData)
+        if success then writefile(FILE_NAME, encoded) end
+    end
+end
+
+if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("CookieSimGui") then
+    LocalPlayer.PlayerGui.CookieSimGui:Destroy()
+end
+
+-------------------------------------------------------------------------------
+-- LOGICAL MASTER UPGRADE CONFIGURATION MATRIX (58 UNIQUE UPGRADES)
+-------------------------------------------------------------------------------
+local UpgradeConfig = {
+    -- BASE TIERS (Rebirth 0 - Core Progression Curve)
+    {Key = "ClickLevel",        Title = "🔺 Reinforced Finger",  Desc = "Adds +1 to base manual click value.", BaseCost = 15, Mult = 1.12, RebReq = 0, Type = "Click", Val = 1},
+    {Key = "Cursors",           Title = "🖱️ Auto-Cursor",       Desc = "Automated mechanical clickers. Adds +1 CPS.", BaseCost = 100, Mult = 1.13, RebReq = 0, Type = "CPS", Val = 1},
+    {Key = "Grandmas",          Title = "👵 Cyber Grandma",     Desc = "Cyborg Grandmas weaving code. Adds +8 CPS.", BaseCost = 1200, Mult = 1.14, RebReq = 0, Type = "CPS", Val = 8},
+    {Key = "Factories",         Title = "🏭 Cookie Reactor",     Desc = "Mass-produces atomic dough matter. Adds +55 CPS.", BaseCost = 14000, Mult = 1.14, RebReq = 0, Type = "CPS", Val = 55},
+    {Key = "Quantum",           Title = "🌀 Quantum Oven",      Desc = "Fuses baking parameters at high speeds. Adds +320 CPS.", BaseCost = 180000, Mult = 1.15, RebReq = 0, Type = "CPS", Val = 320},
+    {Key = "Alchemy",           Title = "⚗️ Alchemy Lab",       Desc = "Transmutes raw iron nodes into sugar. Adds +1.8K CPS.", BaseCost = 2500000, Mult = 1.15, RebReq = 0, Type = "CPS", Val = 1800},
+    {Key = "Portals",           Title = "🌌 Warp Portal",        Desc = "Rips fabric to harvest extra-planar dough. Adds +11K CPS.", BaseCost = 32000000, Mult = 1.16, RebReq = 0, Type = "CPS", Val = 11000},
+    {Key = "TimeMachines",      Title = "⏳ Time Machine",      Desc = "Retrieves golden past bakes instantly. Adds +70K CPS.", BaseCost = 450000000, Mult = 1.16, RebReq = 0, Type = "CPS", Val = 70000},
+    {Key = "Antimatter",        Title = "⚛️ Matter Condenser",  Desc = "Condenses subatomic dark energy into chips. Adds +550K CPS.", BaseCost = 6000000000, Mult = 1.17, RebReq = 0, Type = "CPS", Val = 550000},
+    {Key = "Prisms",            Title = "💎 Pure Light Prism",   Desc = "Refracts incoming pure photon streams. Adds +4.2M CPS.", BaseCost = 85000000000, Mult = 1.17, RebReq = 0, Type = "CPS", Val = 4200000},
+    {Key = "DysonSpheres",      Title = "🪐 Dyson Mega-Sphere",  Desc = "Encloses local stars for thermal baking. Adds +30M CPS.", BaseCost = 1200000000000, Mult = 1.18, RebReq = 0, Type = "CPS", Val = 30000000},
+    {Key = "GalacticCores",     Title = "🌌 Core Siphon Array",  Desc = "Extracts energy directly from gravity wells. Adds +220M CPS.", BaseCost = 20000000000000, Mult = 1.18, RebReq = 0, Type = "CPS", Val = 220000000},
+    {Key = "RealityBenders",    Title = "🔮 Space Alteration Grid", Desc = "Rewrites environmental density constants. Adds +1.5B CPS.", BaseCost = 350000000000000, Mult = 1.19, RebReq = 0, Type = "CPS", Val = 1500000000},
+    {Key = "MultiverseEngines", Title = "🎛️ Dimensional Linker", Desc = "Taps secondary instances of simulation maps. Adds +12B CPS.", BaseCost = 5000000000000000, Mult = 1.19, RebReq = 0, Type = "CPS", Val = 12000000000},
+    {Key = "ChronoEngines",     Title = "🕰️ Temporal Engine",    Desc = "Speeds timeline loops. Adds +95B CPS.", BaseCost = 80000000000000000, Mult = 1.20, RebReq = 0, Type = "CPS", Val = 95000000000},
+    {Key = "HyperDrives",       Title = "🚀 Interstellar Convoy", Desc = "Imports galaxy dust packages. Adds +700B CPS.", BaseCost = 1200000000000000000, Mult = 1.20, RebReq = 0, Type = "CPS", Val = 700000000000},
+    {Key = "DarkEnergy",        Title = "🌟 Void Well Matrix",    Desc = "Stablizes matter generation equations. Adds +5.5T CPS.", BaseCost = 22000000000000000000, Mult = 1.21, RebReq = 0, Type = "CPS", Val = 5500000000000},
+    {Key = "NanoSwarms",        Title = "🤖 Disassembler Bots",  Desc = "Micro-builders constructing core mass units. Adds +42T CPS.", BaseCost = 450000000000000000000, Mult = 1.21, RebReq = 0, Type = "CPS", Val = 42000000000000},
+    {Key = "VoidCatalysts",     Title = "🌀 Abyss Compression Engine", Desc = "Siphons output directly out of zero spaces. Adds +350T CPS.", BaseCost = 9000000000000000000000, Mult = 1.22, RebReq = 0, Type = "CPS", Val = 350000000000000},
+    {Key = "Nebulas",           Title = "☁️ Nebula Condenser",   Desc = "Fuses massive gas clouds into structures. Adds +2.8Qa CPS.", BaseCost = 180000000000000000000000, Mult = 1.22, RebReq = 0, Type = "CPS", Val = 2800000000000000},
+
+    -- REBIRTH 1+ HIGH MILESTONE MATRICES (Logical Price Shift: Starts at 10M+)
+    {Key = "SugarFrenzy",       Title = "⚡ Sugar Frenzy",       Desc = "Modifies systemic manual click values by +50%.", BaseCost = 10000000, Mult = 1.4, RebReq = 1, Type = "ClickMult", Val = 0.5},
+    {Key = "GoldenMagnet",      Title = "🧲 Golden Magnet",     Desc = "Forces environmental golden drops to trigger 15% faster.", BaseCost = 75000000, Mult = 1.45, RebReq = 1, Type = "Magnet", Val = 1},
+    {Key = "CloneArmy",         Title = "👥 Replication Node",   Desc = "Assembles hard-coded duplicate baker systems. Adds +12B CPS.", BaseCost = 500000000, Mult = 1.25, RebReq = 1, Type = "CPS", Val = 12000000000},
+    {Key = "NeuroLink",         Title = "🧠 Neural Mesh Grid",   Desc = "Doubles entire systemic output performance per click.", BaseCost = 8500000000, Mult = 1.6, RebReq = 2, Type = "ClickMult", Val = 1.0},
+    {Key = "Singularity",       Title = "🕳️ Gravitational Core", Desc = "Collapsed blackhole matrix pulling output values. Adds +90B CPS.", BaseCost = 150000000000, Mult = 1.26, RebReq = 2, Type = "CPS", Val = 90000000000},
+    {Key = "MatrixSim",         Title = "💻 Reality Frame Emulator", Desc = "Simulates server-side background farm systems. Adds +680B CPS.", BaseCost = 3000000000000, Mult = 1.26, RebReq = 3, Type = "CPS", Val = 680000000000},
+    {Key = "TachyonCon",        Title = "⚛️ Tachyon Flow Chamber", Desc = "Speeds automated actions backwards through lines. Adds +5T CPS.", BaseCost = 75000000000000, Mult = 1.27, RebReq = 3, Type = "CPS", Val = 5000000000000},
+
+    -- REBIRTH 5+ MILESTONE MATRICES (Starts at Trillions+)
+    {Key = "CosmicBakery",      Title = "🪐 Stellar Forge Network", Desc = "Forges system planetary masses automatically. Adds +45T CPS.", BaseCost = 2500000000000000, Mult = 1.28, RebReq = 5, Type = "CPS", Val = 45000000000000},
+    {Key = "Interdimensional",  Title = "🚪 Inter-Rift Overclocker", Desc = "Rips multi-thread processes into view space. Adds +380T CPS.", BaseCost = 90000000000000000, Mult = 1.29, RebReq = 5, Type = "CPS", Val = 380000000000000},
+    {Key = "LightString",       Title = "🧵 Cosmic Filament Loom",  Desc = "Weaves baseline energy lines into items. Adds +3.1Qa CPS.", BaseCost = 4500000000000000000, Mult = 1.30, RebReq = 6, Type = "CPS", Val = 3100000000000000},
+    {Key = "AbsoluteZero",      Title = "❄️ Cryo-Oven Chamber",   Desc = "Freezes structural production decay vectors completely. Adds +25Qa CPS.", BaseCost = 150000000000000000000, Mult = 1.31, RebReq = 7, Type = "CPS", Val = 25000000000000000},
+    {Key = "ParadoxCore",       Title = "♾️ Mathematical Paradox", Desc = "Creates energy out of conflicting data metrics. Adds +210Qa CPS.", BaseCost = 8000000000000000000000, Mult = 1.32, RebReq = 8, Type = "CPS", Val = 210000000000000000},
+    {Key = "AstralForge",       Title = "✨ Ethereal Core Smelter", Desc = "Siphons star materials directly into active logs. Adds +1.8Qi CPS.", BaseCost = 350000000000000000000000, Mult = 1.33, RebReq = 9, Type = "CPS", Val = 1800000000000000000},
+
+    -- REBIRTH 10+ META OPERATIONS (Starts at Quintillions+)
+    {Key = "GodFinger",         Title = "⚡ Divine Intervention Pointer", Desc = "Adds +150Qi directly to basic manual click value.", BaseCost = 12000000000000000000000, Mult = 1.45, RebReq = 10, Type = "Click", Val = 150000000000000000000},
+    {Key = "OmniPresence",      Title = "👁️ Omnipresent Automation Node", Desc = "Exits system placement frames. Adds +15Qi CPS.", BaseCost = 90000000000000000000000, Mult = 1.34, RebReq = 10, Type = "CPS", Val = 15000000000000000000},
+    {Key = "LogicWeaver",       Title = "📜 Rulebook Corruptor",    Desc = "Modifies internal script definitions for +120Qi CPS.", BaseCost = 2500000000000000000000000, Mult = 1.35, RebReq = 11, Type = "CPS", Val = 120000000000000000000},
+    {Key = "TimeFracture",      Title = "⏳ Split Timeline Splicer", Desc = "Injects data segments from alternate records. Adds +1Sx CPS.", BaseCost = 80000000000000000000000000, Mult = 1.35, RebReq = 12, Type = "CPS", Val = 1000000000000000000000},
+    {Key = "DimensionSplicer",  Title = "🌀 Dimension Folding Rail", Desc = "Merges multi-server tracking together. Adds +8.5Sx CPS.", BaseCost = 1500000000000000000000000000, Mult = 1.36, RebReq = 13, Type = "CPS", Val = 8500000000000000000000},
+    {Key = "QuarkCondenser",    Title = "⚛️ Sub-Planck Fuel Injector", Desc = "Extracts energy signatures out of quarks. Adds +72Sx CPS.", BaseCost = 65000000000000000000000000000, Mult = 1.36, RebReq = 14, Type = "CPS", Val = 72000000000000000000000},
+    {Key = "RealityShatter",    Title = "💥 Screen Space Disruptor", Desc = "Breaks physical bounds within game assets. Adds +600Sx CPS.", BaseCost = 2000000000000000000000000000000, Mult = 1.37, RebReq = 15, Type = "CPS", Val = 600000000000000000000000},
+    {Key = "SuperstringArray",  Title = "🎻 Quantum Vibration Array", Desc = "Manipulates fundamental string fields. Adds +5.2Sp CPS.", BaseCost = 75000000000000000000000000000000, Mult = 1.38, RebReq = 16, Type = "CPS", Val = 5200000000000000000000000},
+    {Key = "DarkFlow",          Title = "🌌 Cosmic Dark Flow Anchor", Desc = "Draws power from outside observable reality. Adds +45Sp CPS.", BaseCost = 3000000000000000000000000000000000, Mult = 1.38, RebReq = 18, Type = "CPS", Val = 45000000000000000000000000},
+    {Key = "PlanckEngine",      Title = "📏 Planck Length Overclocker", Desc = "Extracts vacuum energy from space pixels. Adds +400Sp CPS.", BaseCost = 900000000000000000000000000000000000, Mult = 1.39, RebReq = 20, Type = "CPS", Val = 400000000000000000000000000},
+    {Key = "HologramWorld",     Title = "👁️ Holographic Matrix Node", Desc = "Decodes spatial matrix limits for +3.5Oc CPS.", BaseCost = 45000000000000000000000000000000000000, Mult = 1.40, RebReq = 22, Type = "CPS", Val = 3500000000000000000000000000},
+    {Key = "KarmaBake",         Title = "☸️ Karmic Destiny Engine",  Desc = "Converts cosmic cause and effect loops. Adds +30Oc CPS.", BaseCost = 2000000000000000000000000000000000000000, Mult = 1.41, RebReq = 24, Type = "CPS", Val = 30000000000000000000000000000},
+
+    -- REBIRTH 25+ ENDGAME REALITY OVERLORDS (Starts at Octillions/Nonillions+)
+    {Key = "VoidLord",          Title = "👑 Void Lord Manifestation", Desc = "Summons void overseers to click automatically. Adds +250Oc CPS.", BaseCost = 900000000000000000000000000000000000000000, Mult = 1.42, RebReq = 25, Type = "CPS", Val = 250000000000000000000000000000},
+    {Key = "EntityZero",        Title = "👾 Entity Zero Core Link",   Desc = "Channels output from the primordial engine. Adds +2No CPS.", BaseCost = 45000000000000000000000000000000000000000000, Mult = 1.43, RebReq = 27, Type = "CPS", Val = 2000000000000000000000000000000},
+    {Key = "Chronoswill",       Title = "⏳ Chronos Imperium Beam",  Desc = "Bends historic time layers. Adds +18No CPS.", BaseCost = 3000000000000000000000000000000000000000000000, Mult = 1.44, RebReq = 30, Type = "CPS", Val = 18000000000000000000000000000000},
+    {Key = "MultiverseSpire",   Title = "🗼 Infinite Multiverse Spire", Desc = "Unites all infinite timelines inside one room. Adds +150No CPS.", BaseCost = 150000000000000000000000000000000000000000000000, Mult = 1.45, RebReq = 35, Type = "CPS", Val = 150000000000000000000000000000000},
+    {Key = "EternityDrive",     Title = "🌌 Eternity Core Processor", Desc = "Sustains structural loops endlessly. Adds +1.2Dc CPS.", BaseCost = 80000000000000000000000000000000000000000000000000, Mult = 1.45, RebReq = 40, Type = "CPS", Val = 1200000000000000000000000000000000},
+    {Key = "InfinityGlove",     Title = "🥊 Infinity Baking Gauntlet", Desc = "Snaps fingers to generate +10Dc CPS automatically.", BaseCost = 5000000000000000000000000000000000000000000000000000, Mult = 1.46, RebReq = 45, Type = "CPS", Val = 10000000000000000000000000000000000},
+    {Key = "CosmicPulse",       Title = "💓 Heartbeat of the Cosmos",  Desc = "Syncs output value to universal rhythm constants. Adds +85Dc CPS.", BaseCost = 350000000000000000000000000000000000000000000000000000, Mult = 1.47, RebReq = 50, Type = "CPS", Val = 850000000000000000000000000000000000},
+    {Key = "SingularityCrown",  Title = "👑 Crown of Absolute Density", Desc = "Condenses total universal data into sugar mass. Adds +700Dc CPS.", BaseCost = 20000000000000000000000000000000000000000000000000000000, Mult = 1.48, RebReq = 60, Type = "CPS", Val = 7000000000000000000000000000000000000},
+    {Key = "OverlordCore",      Title = "🔮 Core of the Server Overlord", Desc = "Represents absolute execution authority. Adds +6Ud CPS.", BaseCost = 9500000000000000000000000000000000000000000000000000000000, Mult = 1.49, RebReq = 75, Type = "CPS", Val = 600000000000000000000000000000000000000},
+    {Key = "NirvanaState",      Title = "🧘 Pure State of Nirvana",   Desc = "A state of perfect output peace. Adds +50Ud CPS.", BaseCost = 500000000000000000000000000000000000000000000000000000000000, Mult = 1.50, RebReq = 80, Type = "CPS", Val = 5000000000000000000000000000000000000000},
+    {Key = "InfInfinity",       Title = "♾️ Limitless Horizon Core", Desc = "Achieves unbounded growth rates. Adds +400Ud CPS.", BaseCost = 25000000000000000000000000000000000000000000000000000000000000, Mult = 1.52, RebReq = 100, Type = "CPS", Val = 40000000000000000000000000000000000000000},
+    {Key = "OmegaPoint",        Title = "⚛️ Cosmic Omega Singularity", Desc = "The final compression configuration point. Adds +3Dd CPS.", BaseCost = 9000000000000000000000000000000000000000000000000000000000000000, Mult = 1.55, RebReq = 150, Type = "CPS", Val = 3000000000000000000000000000000000000000000},
+    {Key = "ConceptBake",       Title = "💭 Conceptual Design Engine", Desc = "Thinks products into existence via raw thought. Adds +25Dd CPS.", BaseCost = 800000000000000000000000000000000000000000000000000000000000000000, Mult = 1.58, RebReq = 200, Type = "CPS", Val = 25000000000000000000000000000000000000000000},
+    {Key = "FinalityPoint",     Title = "🌌 Absolute End Point Terminal", Desc = "The literal boundary wall of code creation variables. Adds +200Dd CPS.", BaseCost = 99999999999999999999999999999999999999999999999999999999999999999999, Mult = 1.60, RebReq = 500, Type = "CPS", Val = 200000000000000000000000000000000000000000000}
+}
+
+-------------------------------------------------------------------------------
+-- MATH MODULATION CALCULATIONS
+-------------------------------------------------------------------------------
+local function getNodeCost(cfg) return math.floor(cfg.BaseCost * math.pow(cfg.Mult, PlayerData[cfg.Key])) end
+local function getRebirthCost() return math.floor(1000000 * math.pow(6, PlayerData.Rebirths)) end
+
+local function getClickValue()
+    local amt = PlayerData.ClickLevel
+    for _, c in ipairs(UpgradeConfig) do
+        if c.Type == "Click" and c.Key ~= "ClickLevel" then amt = amt + (PlayerData[c.Key] * c.Val) end
+    end
+    amt = amt * (1 + (PlayerData.SugarFrenzy * 0.5))
+    amt = amt * (1 + (PlayerData.NeuroLink * 1.0))
+    return amt * math.max(1, PlayerData.Rebirths * 3)
+end
+
+local function getCPS()
+    local total = 0
+    for _, cfg in ipairs(UpgradeConfig) do
+        if cfg.Type == "CPS" then total = total + (PlayerData[cfg.Key] * cfg.Val) end
+    end
+    return total * math.max(1, PlayerData.Rebirths * 3)
+end
+
+local function formatNumber(num)
+    if num >= 1e36 then return string.format("%.2fDd", num / 1e36)
+    elseif num >= 1e33 then return string.format("%.2fUd", num / 1e33)
+    elseif num >= 1e30 then return string.format("%.2fDc", num / 1e30)
+    elseif num >= 1e27 then return string.format("%.2fNo", num / 1e27)
+    elseif num >= 1e24 then return string.format("%.2fOc", num / 1e24)
+    elseif num >= 1e21 then return string.format("%.2fSp", num / 1e21)
+    elseif num >= 1e18 then return string.format("%.2fSx", num / 1e18)
+    elseif num >= 1e15 then return string.format("%.2fQi", num / 1e15)
+    elseif num >= 1e12 then return string.format("%.2fQa", num / 1e12)
+    elseif num >= 1e9 then return string.format("%.2fT", num / 1e9)
+    elseif num >= 1e6 then return string.format("%.2fM", num / 1e6)
+    elseif num >= 1e3 then return string.format("%.1fK", num / 1e3)
+    else return tostring(math.floor(num)) end
+end
+
+-------------------------------------------------------------------------------
+-- INTERFACE CORE SCALABLE ARRAYS
+-------------------------------------------------------------------------------
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CookieSimGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 660, 0, 420)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5) -- Locked Center For Scale Symmetry
+mainFrame.BackgroundColor3 = Color3.fromRGB(14, 13, 13)
+mainFrame.Active = true
+mainFrame.Parent = screenGui
+local mfC = Instance.new("UICorner") mfC.CornerRadius = UDim.new(0, 12) mfC.Parent = mainFrame
+local mfS = Instance.new("UIStroke") mfS.Color = Color3.fromRGB(50, 42, 34) mfS.Thickness = 2 mfS.Parent = mainFrame
+
+local uiScale = Instance.new("UIScale")
+uiScale.Scale = 1.0
+uiScale.Parent = mainFrame
+
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(0, 320, 0, 45)
+titleText.Position = UDim2.new(0, 20, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "🍪 COOKIE SIMULATOR: ULTRA SCALABLE MATRIX"
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleText.Font = Enum.Font.GothamBlack
+titleText.TextSize = 11
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = mainFrame
+
+-- Top Right UI Action Control Ribbon Layout
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -40, 0, 6)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Text = "✕"
+closeBtn.TextColor3 = Color3.fromRGB(230, 80, 80)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 16
+closeBtn.Parent = mainFrame
+
+local plusBtn = Instance.new("TextButton")
+plusBtn.Size = UDim2.new(0, 26, 0, 26)
+plusBtn.Position = UDim2.new(1, -72, 0, 9)
+plusBtn.BackgroundColor3 = Color3.fromRGB(32, 28, 24)
+plusBtn.Text = "+"
+plusBtn.TextColor3 = Color3.fromRGB(255, 180, 60)
+plusBtn.Font = Enum.Font.GothamBlack
+plusBtn.TextSize = 14
+plusBtn.Parent = mainFrame
+local pbC = Instance.new("UICorner") pbC.CornerRadius = UDim.new(0, 4) pbC.Parent = plusBtn
+local pbS = Instance.new("UIStroke") pbS.Color = Color3.fromRGB(65, 50, 40) pbS.Thickness = 1 pbS.Parent = plusBtn
+
+local minusBtn = Instance.new("TextButton")
+minusBtn.Size = UDim2.new(0, 26, 0, 26)
+minusBtn.Position = UDim2.new(1, -104, 0, 9)
+minusBtn.BackgroundColor3 = Color3.fromRGB(32, 28, 24)
+minusBtn.Text = "-"
+minusBtn.TextColor3 = Color3.fromRGB(255, 180, 60)
+minusBtn.Font = Enum.Font.GothamBlack
+minusBtn.TextSize = 14
+minusBtn.Parent = mainFrame
+local mbC = Instance.new("UICorner") mbC.CornerRadius = UDim.new(0, 4) mbC.Parent = minusBtn
+local mbS = Instance.new("UIStroke") mbS.Color = Color3.fromRGB(65, 50, 40) mbS.Thickness = 1 mbS.Parent = minusBtn
+
+local resetBtn = Instance.new("TextButton")
+resetBtn.Size = UDim2.new(0, 105, 0, 26)
+resetBtn.Position = UDim2.new(1, -216, 0, 9)
+resetBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+resetBtn.Text = "⚠️ RESET DATA"
+resetBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
+resetBtn.Font = Enum.Font.GothamBlack
+resetBtn.TextSize = 10
+resetBtn.Parent = mainFrame
+local rbC2 = Instance.new("UICorner") rbC2.CornerRadius = UDim.new(0, 4) rbC2.Parent = resetBtn
+local rbS2 = Instance.new("UIStroke") rbS2.Color = Color3.fromRGB(120, 30, 30) rbS2.Thickness = 1 rbS2.Parent = resetBtn
+
+-------------------------------------------------------------------------------
+-- HUD LAYOUT ASSEMBLIES
+-------------------------------------------------------------------------------
+local leftPanel = Instance.new("Frame")
+leftPanel.Size = UDim2.new(0, 240, 1, -60)
+leftPanel.Position = UDim2.new(0, 15, 0, 50)
+leftPanel.BackgroundColor3 = Color3.fromRGB(22, 20, 19)
+leftPanel.Parent = mainFrame
+local lpC = Instance.new("UICorner") lpC.CornerRadius = UDim.new(0, 10) lpC.Parent = leftPanel
+
+local shopScrollingFrame = Instance.new("ScrollingFrame")
+shopScrollingFrame.Size = UDim2.new(1, -295, 1, -60)
+shopScrollingFrame.Position = UDim2.new(0, 270, 0, 50)
+shopScrollingFrame.BackgroundTransparency = 1
+shopScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, (#UpgradeConfig + 1) * 88)
+shopScrollingFrame.ScrollBarThickness = 4
+shopScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 140, 0)
+shopScrollingFrame.Parent = mainFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 8)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = shopScrollingFrame
+
+local countLabel = Instance.new("TextLabel")
+countLabel.Size = UDim2.new(1, 0, 0, 32)
+countLabel.Position = UDim2.new(0, 0, 0, 15)
+countLabel.BackgroundTransparency = 1
+countLabel.Text = "0 Cookies"
+countLabel.TextColor3 = Color3.fromRGB(255, 175, 70)
+countLabel.Font = Enum.Font.GothamBlack
+countLabel.TextSize = 20
+countLabel.Parent = leftPanel
+
+local cpsLabel = Instance.new("TextLabel")
+cpsLabel.Size = UDim2.new(1, 0, 0, 18)
+cpsLabel.Position = UDim2.new(0, 0, 0, 45)
+cpsLabel.BackgroundTransparency = 1
+cpsLabel.Text = "per second: 0"
+cpsLabel.TextColor3 = Color3.fromRGB(170, 160, 150)
+cpsLabel.Font = Enum.Font.GothamBold
+cpsLabel.TextSize = 12
+cpsLabel.Parent = leftPanel
+
+local giantCookie = Instance.new("TextButton")
+giantCookie.Size = UDim2.new(0, 130, 0, 130)
+giantCookie.Position = UDim2.new(0.5, -65, 0.5, -40)
+giantCookie.BackgroundColor3 = Color3.fromRGB(175, 110, 45)
+giantCookie.Text = "🍪"
+giantCookie.TextSize = 65
+giantCookie.Parent = leftPanel
+local gcC = Instance.new("UICorner") gcC.CornerRadius = UDim.new(1, 0) gcC.Parent = giantCookie
+local gcS = Instance.new("UIStroke") gcS.Color = Color3.fromRGB(255, 170, 60) gcS.Thickness = 2.5 gcS.Parent = giantCookie
+
+local rebDisplay = Instance.new("TextLabel")
+rebDisplay.Size = UDim2.new(1, 0, 0, 30)
+rebDisplay.Position = UDim2.new(0, 0, 1, -40)
+rebDisplay.BackgroundTransparency = 1
+rebDisplay.Text = "Global Factor Boost: x1"
+rebDisplay.TextColor3 = Color3.fromRGB(200, 120, 255)
+rebDisplay.Font = Enum.Font.GothamBold
+rebDisplay.TextSize = 11
+rebDisplay.Parent = leftPanel
+
+-------------------------------------------------------------------------------
+-- DATA COMPONENT GENERATOR RUNNERS
+-------------------------------------------------------------------------------
+local UI_Elements = {}
+
+local function generateStoreCards()
+    for idx, cfg in ipairs(UpgradeConfig) do
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(1, -10, 0, 80)
+        card.BackgroundColor3 = Color3.fromRGB(26, 23, 21)
+        card.LayoutOrder = idx
+        card.Parent = shopScrollingFrame
+        local cC = Instance.new("UICorner") cC.CornerRadius = UDim.new(0, 8) cC.Parent = card
+        local cS = Instance.new("UIStroke") cS.Color = Color3.fromRGB(45, 38, 32) cS.Thickness = 1 cS.Parent = card
+
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, -125, 0, 22) title.Position = UDim2.new(0, 12, 0, 10) title.BackgroundTransparency = 1
+        title.TextColor3 = Color3.fromRGB(255, 255, 255) title.Font = Enum.Font.GothamBlack title.TextSize = 12
+        title.TextXAlignment = Enum.TextXAlignment.Left title.Parent = card
+
+        local desc = Instance.new("TextLabel")
+        desc.Size = UDim2.new(1, -125, 0, 36) desc.Position = UDim2.new(0, 12, 0, 32) desc.BackgroundTransparency = 1
+        desc.TextColor3 = Color3.fromRGB(145, 135, 125) desc.Font = Enum.Font.GothamMedium desc.TextSize = 10
+        desc.TextWrapped = true desc.TextXAlignment = Enum.TextXAlignment.Left desc.Parent = card
+
+        local buyBtn = Instance.new("TextButton")
+        buyBtn.Size = UDim2.new(0, 105, 0, 46) buyBtn.Position = UDim2.new(1, -117, 0.5, -23) buyBtn.BackgroundColor3 = Color3.fromRGB(38, 32, 28)
+        buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255) buyBtn.Font = Enum.Font.GothamBlack buyBtn.TextSize = 11 buyBtn.Parent = card
+        local bC = Instance.new("UICorner") bC.CornerRadius = UDim.new(0, 6) bC.Parent = buyBtn
+
+        buyBtn.MouseButton1Click:Connect(function()
+            if PlayerData.Rebirths >= cfg.RebReq then
+                local cost = getNodeCost(cfg)
+                if PlayerData.Clicks >= cost then
+                    PlayerData.Clicks -= cost
+                    PlayerData[cfg.Key] += 1
+                    _G.MasterUpdateCall() saveProgress()
+                end
+            end
+        end)
+        UI_Elements[cfg.Key] = {Card = card, Title = title, Desc = desc, Button = buyBtn, Config = cfg}
+    end
+
+    local rCard = Instance.new("Frame")
+    rCard.Size = UDim2.new(1, -10, 0, 80) rCard.BackgroundColor3 = Color3.fromRGB(28, 22, 28) rCard.LayoutOrder = 9999 rCard.Parent = shopScrollingFrame
+    local rcC = Instance.new("UICorner") rcC.CornerRadius = UDim.new(0, 8) rcC.Parent = rCard
+    local rcS = Instance.new("UIStroke") rcS.Color = Color3.fromRGB(65, 35, 65) rcS.Thickness = 1 rcS.Parent = rCard
+
+    local rTitle = Instance.new("TextLabel")
+    rTitle.Size = UDim2.new(1, -125, 0, 22) rTitle.Position = UDim2.new(0, 12, 0, 10) rTitle.BackgroundTransparency = 1
+    rTitle.TextColor3 = Color3.fromRGB(255, 255, 255) rTitle.Font = Enum.Font.GothamBlack rTitle.TextSize = 12
+    rTitle.TextXAlignment = Enum.TextXAlignment.Left rTitle.Parent = rCard
+
+    local rDesc = Instance.new("TextLabel")
+    rDesc.Size = UDim2.new(1, -125, 0, 36) rDesc.Position = UDim2.new(0, 12, 0, 32) rDesc.BackgroundTransparency = 1
+    rDesc.TextColor3 = Color3.fromRGB(165, 145, 165) rDesc.Font = Enum.Font.GothamMedium rDesc.TextSize = 10
+    rDesc.TextWrapped = true rDesc.TextXAlignment = Enum.TextXAlignment.Left rDesc.Parent = rCard
+
+    local rBuy = Instance.new("TextButton")
+    rBuy.Size = UDim2.new(0, 105, 0, 46) rBuy.Position = UDim2.new(1, -117, 0.5, -23) rBuy.BackgroundColor3 = Color3.fromRGB(45, 30, 45)
+    rBuy.TextColor3 = Color3.fromRGB(255, 255, 255) rBuy.Font = Enum.Font.GothamBlack rBuy.TextSize = 11 rBuy.Parent = rCard
+    local rbC = Instance.new("UICorner") rbC.CornerRadius = UDim.new(0, 6) rbC.Parent = rBuy
+
+    rBuy.MouseButton1Click:Connect(function()
+        local cost = getRebirthCost()
+        if PlayerData.Clicks >= cost then
+            PlayerData.Clicks = 0
+            for _, c in ipairs(UpgradeConfig) do PlayerData[c.Key] = (c.Key == "ClickLevel" and 1 or 0) end
+            PlayerData.Rebirths += 1
+            _G.MasterUpdateCall() saveProgress()
+        end
+    end)
+    UI_Elements["RebirthNode"] = {Title = rTitle, Desc = rDesc, Button = rBuy}
+end
+
+generateStoreCards()
+
+-------------------------------------------------------------------------------
+-- FLOATING UI VECTOR RENDERS
+-------------------------------------------------------------------------------
+local function createFloatingText(amount, exactPosition)
+    local label = Instance.new("TextLabel")
+    -- Factor UI scale adjustments into coordinate calculations to map accurately on click
+    local unscaledX = (exactPosition.X - mainFrame.AbsolutePosition.X) / uiScale.Scale + mainFrame.Size.X.Offset/2
+    local unscaledY = (exactPosition.Y - mainFrame.AbsolutePosition.Y) / uiScale.Scale + mainFrame.Size.Y.Offset/2
+    
+    label.Size = UDim2.new(0, 100, 0, 30)
+    label.Position = UDim2.new(0, exactPosition.X - 50, 0, exactPosition.Y - 45)
+    label.BackgroundTransparency = 1 label.Text = "+" .. formatNumber(amount)
+    label.TextColor3 = Color3.fromRGB(255, 210, 80) label.Font = Enum.Font.GothamBlack label.TextSize = 18
+    label.ZIndex = 10 label.Parent = screenGui
+
+    TweenService:Create(label, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = label.Position + UDim2.new(0, math.random(-20, 20), 0, -75), TextTransparency = 1
+    }):Play()
+    task.delay(0.8, function() label:Destroy() end)
+end
+
+_G.MasterUpdateCall = function()
+    countLabel.Text = formatNumber(PlayerData.Clicks) .. " Cookies"
+    cpsLabel.Text = "per second: " .. formatNumber(getCPS())
+    rebDisplay.Text = "Global Factor Boost: x" .. formatNumber(math.max(1, PlayerData.Rebirths * 3))
+
+    for _, item in pairs(UI_Elements) do
+        if item.Config then
+            local cfg = item.Config
+            if PlayerData.Rebirths >= cfg.RebReq then
+                local cost = getNodeCost(cfg)
+                item.Title.Text = cfg.Title .. " [" .. PlayerData[cfg.Key] .. "]"
+                item.Desc.Text = cfg.Desc
+                item.Button.Text = formatNumber(cost)
+                item.Button.BackgroundColor3 = (PlayerData.Clicks >= cost) and Color3.fromRGB(0, 150, 75) or Color3.fromRGB(38, 32, 28)
+            else
+                item.Title.Text = "🔒 LOCKED NODE"
+                item.Desc.Text = "Requires milestone Rebirth validation point " .. cfg.RebReq .. " to decipher calculations."
+                item.Button.Text = "Rebirth " .. cfg.RebReq
+                item.Button.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
+            end
+        end
+    end
+
+    local rCost = getRebirthCost()
+    local rbUnit = UI_Elements["RebirthNode"]
+    rbUnit.Title.Text = "Galactic Rebirth (Stage " .. PlayerData.Rebirths .. ")"
+    rbUnit.Desc.Text = "Resets base nodes logs in exchange for permanent global 3x generation multi-layers."
+    rbUnit.Button.Text = formatNumber(rCost)
+    rbUnit.Button.BackgroundColor3 = (PlayerData.Clicks >= rCost) and Color3.fromRGB(130, 50, 180) or Color3.fromRGB(45, 30, 45)
+end
+
+-------------------------------------------------------------------------------
+-- MANUAL SCALE MULTIPLIER HANDLERS
+-------------------------------------------------------------------------------
+local function modifyLayoutScale(step)
+    local viewport = workspace.CurrentCamera.ViewportSize
+    -- Establish exact fullscreen capability boundaries safely
+    local maxClampLimit = math.min(viewport.X / 660, viewport.Y / 420)
+    local minClampLimit = 0.4
+    
+    local endScaleTarget = math.clamp(uiScale.Scale + step, minClampLimit, maxClampLimit)
+    
+    TweenService:Create(uiScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Scale = endScaleTarget
+    }):Play()
+end
+
+plusBtn.MouseButton1Click:Connect(function() modifyLayoutScale(0.1) end)
+minusBtn.MouseButton1Click:Connect(function() modifyLayoutScale(-0.1) end)
+
+-------------------------------------------------------------------------------
+-- INTERACTIVE CONTROL SNIPPETS & STABLE ENGINE DRAG LOOPS
+-------------------------------------------------------------------------------
+giantCookie.MouseButton1Down:Connect(function()
+    local amt = getClickValue() PlayerData.Clicks += amt _G.MasterUpdateCall()
+    createFloatingText(amt, UserInputService:GetMouseLocation())
+    giantCookie.Size = UDim2.new(0, 120, 0, 120)
+    task.delay(0.04, function() giantCookie.Size = UDim2.new(0, 130, 0, 130) end)
+end)
+
+resetBtn.MouseButton1Click:Connect(function()
+    for k, v in pairs(DefaultData) do PlayerData[k] = v end
+    _G.MasterUpdateCall() saveProgress()
+    resetBtn.Text = "✨ RESET SUCCESS"
+    task.delay(1.5, function() resetBtn.Text = "⚠️ RESET DATA" end)
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    saveProgress()
+    screenGui:Destroy()
+end)
+
+-- Custom Delta Mouse Drag Array Handler (Compatible across manual UI Scales)
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-------------------------------------------------------------------------------
+-- TIMELINE CLOCK SYNC MOTORS
+-------------------------------------------------------------------------------
+task.spawn(function()
+    while task.wait(0.1) do
+        local continuous = getCPS()
+        if continuous > 0 then PlayerData.Clicks += (continuous / 10) _G.MasterUpdateCall() end
+    end
+end)
+
+task.spawn(function() while task.wait(20) do saveProgress() end end)
+
+_G.MasterUpdateCall()
+
