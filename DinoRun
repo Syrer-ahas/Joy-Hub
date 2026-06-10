@@ -1,0 +1,383 @@
+-- Modern 2D Dino Minigame Executor Script (V2 - High Speed Edition)
+-- Compatible with Mobile & PC Executors
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Core Screen GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DinoMinigameUI_V2"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Target CoreGui safely if available, otherwise fallback to PlayerGui
+local success, err = pcall(function()
+    ScreenGui.Parent = game:GetService("CoreGui")
+end)
+if not success then
+    ScreenGui.Parent = PlayerGui
+end
+
+-- Main Window Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 14)
+MainCorner.Parent = MainFrame
+
+-- Premium Animated White Border System
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2.5
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.LineJoinMode = Enum.LineJoinMode.Round
+UIStroke.Parent = MainFrame
+
+local BorderGradient = Instance.new("UIGradient")
+BorderGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(45, 45, 55)), -- Dark break gap for the moving effect
+    ColorSequenceKeypoint.new(0.7, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+})
+BorderGradient.Parent = UIStroke
+
+-- UIScale Component for Global UI Sizing (+ / - Buttons)
+local UiScale = Instance.new("UIScale")
+UiScale.Parent = MainFrame
+UiScale.Scale = 1.0
+
+-- Top Bar UI
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 42)
+TopBar.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 14)
+TopCorner.Parent = TopBar
+
+-- Title Text
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 250, 1, 0)
+Title.Position = UDim2.new(0, 16, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🦖 Offline Dino Run"
+Title.TextColor3 = Color3.fromRGB(245, 245, 250)
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+-- UI Layout Configuration Helper
+local function createButton(name, text, pos, size, bg, parent)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = bg
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 15
+    btn.BorderSizePixel = 0
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    return btn
+end
+
+-- Control Elements (+ , - , Close)
+local CloseBtn = createButton("CloseBtn", "X", UDim2.new(1, -36, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(230, 80, 80), TopBar)
+local PlusBtn = createButton("PlusBtn", "+", UDim2.new(1, -72, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(65, 185, 115), TopBar)
+local MinusBtn = createButton("MinusBtn", "-", UDim2.new(1, -108, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(85, 115, 185), TopBar)
+
+-- Responsive Scaling Action Logic
+PlusBtn.MouseButton1Click:Connect(function()
+    UiScale.Scale = math.clamp(UiScale.Scale + 0.1, 0.5, 2.2)
+end)
+
+MinusBtn.MouseButton1Click:Connect(function()
+    UiScale.Scale = math.clamp(UiScale.Scale - 0.1, 0.5, 2.2)
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Gameplay Display Metrics Frame
+local GameArea = Instance.new("Frame")
+GameArea.Name = "GameArea"
+GameArea.Size = UDim2.new(1, -20, 1, -64)
+GameArea.Position = UDim2.new(0, 10, 0, 52)
+GameArea.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+GameArea.ClipsDescendants = true
+GameArea.Parent = MainFrame
+
+local GameCorner = Instance.new("UICorner")
+GameCorner.CornerRadius = UDim.new(0, 10)
+GameCorner.Parent = GameArea
+
+-- Ground Visual Track Line
+local Ground = Instance.new("Frame")
+Ground.Size = UDim2.new(1, 0, 0, 4)
+Ground.Position = UDim2.new(0, 0, 0, 210)
+Ground.BackgroundColor3 = Color3.fromRGB(90, 90, 100)
+Ground.BorderSizePixel = 0
+Ground.Parent = GameArea
+
+-- Live Score Board Outputs
+local MetricsLabel = Instance.new("TextLabel")
+MetricsLabel.Size = UDim2.new(1, -20, 0, 30)
+MetricsLabel.Position = UDim2.new(0, 12, 0, 6)
+MetricsLabel.BackgroundTransparency = 1
+MetricsLabel.Text = "Speed: 0.30 | Score: 0"
+MetricsLabel.TextColor3 = Color3.fromRGB(210, 210, 220)
+MetricsLabel.TextSize = 14
+MetricsLabel.Font = Enum.Font.Code
+MetricsLabel.TextXAlignment = Enum.TextXAlignment.Left
+MetricsLabel.Parent = GameArea
+
+local NotificationLabel = Instance.new("TextLabel")
+NotificationLabel.Size = UDim2.new(1, -20, 0, 30)
+NotificationLabel.Position = UDim2.new(0, 12, 0, 6)
+NotificationLabel.BackgroundTransparency = 1
+NotificationLabel.Text = ""
+NotificationLabel.TextColor3 = Color3.fromRGB(250, 190, 60)
+NotificationLabel.TextSize = 14
+NotificationLabel.Font = Enum.Font.GothamBold
+NotificationLabel.TextXAlignment = Enum.TextXAlignment.Right
+NotificationLabel.Parent = GameArea
+
+-- Action Hint Instructions Label
+local HintLabel = Instance.new("TextLabel")
+HintLabel.Size = UDim2.new(1, 0, 0, 20)
+HintLabel.Position = UDim2.new(0, 0, 1, -24)
+HintLabel.BackgroundTransparency = 1
+HintLabel.Text = "Tap Window Area or Press [SPACEBAR] to Jump"
+HintLabel.TextColor3 = Color3.fromRGB(110, 110, 125)
+HintLabel.TextSize = 12
+HintLabel.Font = Enum.Font.Gotham
+HintLabel.Parent = GameArea
+
+-- Game Dino Instance
+local Dino = Instance.new("TextLabel")
+Dino.Name = "Dino"
+Dino.Size = UDim2.new(0, 32, 0, 34)
+Dino.Position = UDim2.new(0, 50, 0, 176) -- Align right above the ground track line
+Dino.BackgroundTransparency = 1
+Dino.Text = "🦖"
+Dino.TextSize = 30
+Dino.Parent = GameArea
+
+-- Core State Variables Engine
+local gameActive = true
+local currentSpeed = 0.3
+local currentScore = 0
+local timeElapsed = 0
+
+-- Updated Speed 15 Cap Constraints
+local targetCapSpeed = 15.0
+local isSpeedCapped = false
+local speedCapTimer = 0
+local speedCapCompleted = false
+
+-- Engine Physics Constant Adjustments
+local groundYPos = 176
+local dinoYVelocity = 0
+local gravityAcceleration = 1650 -- Crisp snappy physics fall weight
+local initialJumpVelocity = -460
+local isJumpingState = false
+
+local activeObstacles = {}
+local itemSpawnCountdown = 0.8 -- First element drops almost immediately!
+
+-- Trigger Jumping Action Vector Calculations
+local function triggerDinoJump()
+    if not isJumpingState and gameActive then
+        isJumpingState = true
+        dinoYVelocity = initialJumpVelocity
+    end
+end
+
+-- Map Mechanical Control Triggers
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Space then
+        triggerDinoJump()
+    end
+end)
+
+-- Overlay Frame Layer Touch / Click Interaction Window
+local MobileClickZone = Instance.new("TextButton")
+MobileClickZone.Size = UDim2.new(1, 0, 1, 0)
+MobileClickZone.BackgroundTransparency = 1
+MobileClickZone.Text = ""
+MobileClickZone.ZIndex = 2
+MobileClickZone.Parent = GameArea
+
+MobileClickZone.MouseButton1Click:Connect(function()
+    triggerDinoJump()
+end)
+
+-- Reset Operational Game System Functions Post Collapse
+local function resetGameSystem()
+    for _, obs in ipairs(activeObstacles) do
+        obs:Destroy()
+    end
+    activeObstacles = {}
+    
+    currentSpeed = 0.3
+    currentScore = 0
+    timeElapsed = 0
+    isSpeedCapped = false
+    speedCapTimer = 0
+    speedCapCompleted = false
+    dinoYVelocity = 0
+    Dino.Position = UDim2.new(0, 50, 0, groundYPos)
+    isJumpingState = false
+    itemSpawnCountdown = 0.5
+    gameActive = true
+    NotificationLabel.Text = ""
+end
+
+-- Structural Intersection Evaluation Bounding Boxes
+local function isColliding(element1, element2)
+    local absPos1, absSize1 = element1.AbsolutePosition, element1.AbsoluteSize
+    local absPos2, absSize2 = element2.AbsolutePosition, element2.AbsoluteSize
+    
+    -- Compact offset padding buffers to feel accurate and satisfyingly fair
+    return absPos1.X < absPos2.X + absSize2.X - 8 and
+           absPos1.X + absSize1.X - 8 > absPos2.X and
+           absPos1.Y < absPos2.Y + absSize2.Y - 5 and
+           absPos1.Y + absSize1.Y - 5 > absPos2.Y
+end
+
+-- Primary Run-Loop Matrix Connect Update Channel
+local connection
+connection = RunService.Heartbeat:Connect(function(deltaTime)
+    if not ScreenGui or not ScreenGui.Parent then
+        connection:Disconnect()
+        return
+    end
+    
+    -- Animate the Outline Border Gradient Cycle
+    BorderGradient.Rotation = (BorderGradient.Rotation + (deltaTime * 110)) % 360
+    
+    if not gameActive then return end
+    
+    timeElapsed = timeElapsed + deltaTime
+    currentScore = math.floor(timeElapsed * 12)
+    
+    -- Linear Velocity Progression System Math Scaling
+    if not isSpeedCapped then
+        currentSpeed = currentSpeed + (0.1 * deltaTime)
+        
+        -- Cap check engine activation logic at newly defined Speed 15 threshold
+        if currentSpeed >= targetCapSpeed and not speedCapCompleted then
+            currentSpeed = targetCapSpeed
+            isSpeedCapped = true
+            speedCapTimer = 60.0
+        end
+    else
+        -- Active Speed Cap Hold Multipliers
+        speedCapTimer = speedCapTimer - deltaTime
+        NotificationLabel.Text = string.format("⚡ LOCK: %ds ", math.ceil(speedCapTimer))
+        if speedCapTimer <= 0 then
+            isSpeedCapped = false
+            speedCapCompleted = true
+            NotificationLabel.Text = "🚀 VELOCITY UNLOCKED!"
+            task.delay(2, function() if gameActive then NotificationLabel.Text = "" end end)
+        end
+    end
+    
+    MetricsLabel.Text = string.format("Speed: %.2f | Score: %d", currentSpeed, currentScore)
+    
+    -- Gravity Kinematics Vector Engine Logic
+    if isJumpingState then
+        dinoYVelocity = dinoYVelocity + (gravityAcceleration * deltaTime)
+        local currentYOffset = Dino.Position.Y.Offset + (dinoYVelocity * deltaTime)
+        
+        if currentYOffset >= groundYPos then
+            currentYOffset = groundYPos
+            dinoYVelocity = 0
+            isJumpingState = false
+        end
+        Dino.Position = UDim2.new(0, 50, 0, currentYOffset)
+    end
+    
+    -- Fixed & Optimized Obstacle Spawner Ticks
+    itemSpawnCountdown = itemSpawnCountdown - deltaTime
+    if itemSpawnCountdown <= 0 then
+        local obstacleChoice = math.random(1, 2)
+        local obstacleItem = Instance.new("TextLabel")
+        obstacleItem.BackgroundTransparency = 1
+        obstacleItem.Font = Enum.Font.GothamBold
+        
+        if obstacleChoice == 1 then
+            obstacleItem.Text = "🌵"
+            obstacleItem.TextSize = 24
+            obstacleItem.Size = UDim2.new(0, 24, 0, 26)
+            obstacleItem.Position = UDim2.new(1, 0, 0, 184) -- Perfectly placed over the line
+        else
+            obstacleItem.Text = "🌴"
+            obstacleItem.TextSize = 26
+            obstacleItem.Size = UDim2.new(0, 26, 0, 30)
+            obstacleItem.Position = UDim2.new(1, 0, 0, 180)
+        end
+        
+        obstacleItem.Parent = GameArea
+        table.insert(activeObstacles, obstacleItem)
+        
+        -- Fast responsive spawns balancing algorithm: ranges from ~1.2 to 2.8 seconds apart early on
+        itemSpawnCountdown = math.random(14, 28) / (math.clamp(currentSpeed, 0.3, 8) + 4.5)
+    end
+    
+    -- Translate Obstacles Right-to-Left and Verify Collisions
+    for index = #activeObstacles, 1, -1 do
+        local currentObstacle = activeObstacles[index]
+        if currentObstacle and currentObstacle.Parent then
+            -- Frame Translation Scaling Constants
+            local translationPixels = (currentSpeed * 45) + 160
+            currentObstacle.Position = currentObstacle.Position - UDim2.new(0, translationPixels * deltaTime, 0, 0)
+            
+            -- Call Collision Verification Sweeper Matrices
+            if isColliding(Dino, currentObstacle) then
+                gameActive = false
+                NotificationLabel.Text = "💥 DEFEATED! Tap to restart..."
+                task.wait(0.8)
+                
+                -- Yield for active user input context tap to clear game cycle
+                local clickToRestartConnection
+                clickToRestartConnection = MobileClickZone.MouseButton1Click:Connect(function()
+                    clickToRestartConnection:Disconnect()
+                    resetGameSystem()
+                end)
+                return
+            end
+            
+            -- Garbage Collector for Off-screen Assets
+            if currentObstacle.AbsolutePosition.X < GameArea.AbsolutePosition.X - 40 then
+                currentObstacle:Destroy()
+                table.remove(activeObstacles, index)
+            end
+        end
+    end
+end)
