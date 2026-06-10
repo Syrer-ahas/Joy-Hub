@@ -1,0 +1,904 @@
+-- ROCKETEER: Arcade Overhaul Edition (Ultimate Multi-System Variant - V3.7 BALANCED)
+-- Dynamic Scaling: +0.95x Threat Matrix every 10 Waves | +0.5x Coin Multiplier every 5 Waves
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+while not player do task.wait(0.1) player = Players.LocalPlayer end
+
+local TargetParent = (gethui and gethui()) or CoreGui
+if TargetParent:FindFirstChild("RocketeerRemastered") then
+	TargetParent.RocketeerRemastered:Destroy()
+end
+
+--------------------------------------------------------------------------------
+-- 1. EXPANDED GAME DATA & STATE MANAGEMENT
+--------------------------------------------------------------------------------
+local GameState = {
+	Active = false,
+	Spawning = false,
+	Paused = false,
+	PauseCooldown = false,
+	Score = 0,
+	Coins = 300, 
+	Wave = 0,
+	IsBossWave = false,
+	
+	MaxHealth = 100,
+	Health = 100,
+	Speed = 0.022, 
+	Damage = 10,
+	FireRate = 0.35,
+	CoinMultiplier = 1,
+	
+	-- Mechanics Modifiers
+	CritChance = 0,        
+	DoubleShotChance = 0,  
+	MagnetRange = 0.15,    
+	MagnetSpeed = 0.4,     
+	ShieldRegen = 0,       
+	PierceCount = 1,       
+	ExplosiveRadius = 0,   
+	BossSlayerMult = 1,    
+	DodgeChance = 0,       
+	ScoreEngine = 1,       
+
+	Upgrades = {
+		Damage = {Level = 1, Cost = 50, Display = "💥 PLASMA OVERDRIVE"},
+		FireRate = {Level = 1, Cost = 60, Display = "⚡ HYPER TRIGGER"},
+		Speed = {Level = 1, Cost = 40, Display = "🚀 WARP ENGINES"},
+		MaxHP = {Level = 1, Cost = 70, Display = "🛡️ FORCE SHIELD"},
+		Economy = {Level = 1, Cost = 80, Display = "💰 COIN EXTRACTOR"},
+		CritMatrix = {Level = 1, Cost = 90, Display = "🎯 CRIT MATRIX"},
+		TwinSplit = {Level = 1, Cost = 120, Display = "👥 TWIN SPLIT CAP"},
+		MagnetField = {Level = 1, Cost = 50, Display = "🧲 COIN MAGNET"},
+		NanoRegen = {Level = 1, Cost = 100, Display = "⏳ NANO REGEN UNIT"},
+		HyperPierce = {Level = 1, Cost = 150, Display = "🔱 RAIL PIERCER"},
+		FlakRounds = {Level = 1, Cost = 110, Display = "💥 FLAK AMMUNITION"},
+		ReaperDrive = {Level = 1, Cost = 130, Display = "👹 REAPER DRIVE"},
+		ReflexField = {Level = 1, Cost = 140, Display = "💨 DISPLACEMENT MAT"},
+		FameEngine = {Level = 1, Cost = 60, Display = "🏆 FAME MATRIX"},
+		OverdriveCap = {Level = 1, Cost = 200, Display = "🔋 STASIS CELL EX"}
+	}
+}
+
+local ScaleConfig = {
+	CurrentX = 460, 
+	CurrentY = 350, 
+	MinX = 400,
+	MinY = 300,
+	Step = 50
+}
+
+local Bullets = {}
+local Enemies = {}
+local Drops = {}
+local LastShotTime = 0
+local Connections = {}
+
+--------------------------------------------------------------------------------
+-- 2. UI CREATION HELPER FUNCTIONS
+--------------------------------------------------------------------------------
+local WindowControls 
+
+local function createControlBtn(text, color, order)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.28, 0, 1, 0)
+	btn.BackgroundColor3 = color
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 13
+	btn.LayoutOrder = order
+	Instance.new("UICorner").Parent = btn
+	return btn
+end
+
+local UpgradeScroll 
+local function createUpgradeButton(key, desc)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.95, 0, 0, 42)
+	btn.BackgroundColor3 = Color3.fromRGB(24, 24, 40)
+	btn.Text = desc .. "\nLVL 1 [Cost: 50]"
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamMedium
+	btn.TextSize = 10
+	Instance.new("UICorner").Parent = btn
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(50, 55, 80)
+	stroke.Parent = btn
+	return btn
+end
+
+local ManualControls 
+local function createArrow(text, pos)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.47, 0, 0.8, 0)
+	btn.Position = pos
+	btn.BackgroundColor3 = Color3.fromRGB(30, 32, 54)
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(0, 220, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	Instance.new("UICorner").Parent = btn
+	return btn
+end
+
+--------------------------------------------------------------------------------
+-- 3. 50 NEW TYPES OF ENEMIES SYSTEM DATABASE
+--------------------------------------------------------------------------------
+local EnemyDatabase = {}
+local EnemyNames = {
+	"Scout Drone", "Vanguard Probe", "Vector Seeker", "Pulse Fighter", "Void Striker",
+	"Cyber Raider", "Helix Cruiser", "Solar Phantom", "Quantum Wraith", "Apex Interceptor",
+	"Eclipse Bomber", "Titan Sentry", "Nebula Guard", "Astral Shredder", "Cosmic Stalker",
+	"Shadow Reaper", "Siege Corvette", "Warp Warden", "Obsidian Prowler", "Matrix Devastator",
+	"Blaze Swarmer", "Venom Splicer", "Laser Skiff", "Rune Enforcer", "Static Banshee",
+	"Storm Golem", "Tundra Nomad", "Prism Specter", "Abyss Haunter", "Dread Overlord",
+	"Singularity Core", "Malware Infector", "Glitch Carapace", "Phalanx Exo", "Sovereign Pod",
+	"Omega Carrier", "Infinity Aegis", "Chrono Corsair", "Spectral Executioner", "Doomsday Engine",
+	"Hydra Monarch", "Horizon Goliath", "Rift Behemoth", "Nova Colossus", "Star Destroyer",
+	"Nether Leviathan", "Void Emperor", "Galactic Tyrant", "Universal Catalyst", "Armageddon Prime"
+}
+
+for i = 1, 50 do
+	local colorH = (i * 7.2) / 360 
+	local hpCalc = math.floor(10 + (i * 9) + (math.pow(i, 1.8) * 1.5))
+	
+	if i == 1 then hpCalc = 10
+	elseif i == 2 then hpCalc = 20
+	end
+	
+	EnemyDatabase[i] = {
+		Name = EnemyNames[i] or ("Raider Class " .. i),
+		BaseHP = hpCalc,
+		Color = Color3.fromHSV(colorH, 0.85, 0.95),
+		SpeedModifier = math.max(0.3, 1.1 - (i * 0.012)),
+		ScoreAward = i * 150
+	}
+end
+
+--------------------------------------------------------------------------------
+-- 4. INTERACTIVE RESPONSIVE DESIGN WINDOW ENVIRONMENT
+--------------------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RocketeerRemastered"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 99999
+ScreenGui.Parent = TargetParent
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, ScaleConfig.CurrentX, 0, ScaleConfig.CurrentY)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(0, 160, 255)
+MainStroke.Thickness = 2
+MainStroke.Parent = MainFrame
+
+WindowControls = Instance.new("Frame")
+WindowControls.Size = UDim2.new(0.24, 0, 0.07, 0)
+WindowControls.Position = UDim2.new(0.74, 0, 0.015, 0)
+WindowControls.BackgroundTransparency = 1
+WindowControls.Parent = MainFrame
+
+local UIList = Instance.new("UIListLayout")
+UIList.FillDirection = Enum.FillDirection.Horizontal
+UIList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0.04, 0)
+UIList.Parent = WindowControls
+
+local MinusBtn = createControlBtn("-", Color3.fromRGB(40, 48, 66), 1)
+MinusBtn.Parent = WindowControls
+local PlusBtn = createControlBtn("+", Color3.fromRGB(40, 48, 66), 2)
+PlusBtn.Parent = WindowControls
+local CloseBtn = createControlBtn("X", Color3.fromRGB(220, 50, 50), 3)
+CloseBtn.Parent = WindowControls
+
+local StopBtn = Instance.new("TextButton")
+StopBtn.Size = UDim2.new(0.22, 0, 0.07, 0)
+StopBtn.Position = UDim2.new(0.51, 0, 0.015, 0)
+StopBtn.BackgroundColor3 = Color3.fromRGB(160, 20, 240)
+StopBtn.Text = "⏸ STASIS"
+StopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StopBtn.Font = Enum.Font.GothamBold
+StopBtn.TextSize = 10
+StopBtn.Parent = MainFrame
+Instance.new("UICorner").Parent = StopBtn
+
+local HeaderFrame = Instance.new("Frame")
+HeaderFrame.Size = UDim2.new(0.48, 0, 0.07, 0)
+HeaderFrame.Position = UDim2.new(0.02, 0, 0.015, 0)
+HeaderFrame.BackgroundTransparency = 1
+HeaderFrame.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "ROCKETEER // DELTA"
+TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 12
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = HeaderFrame
+
+local StatsLabel = Instance.new("TextLabel")
+StatsLabel.Size = UDim2.new(0.96, 0, 0.05, 0)
+StatsLabel.Position = UDim2.new(0.02, 0, 0.1, 0)
+StatsLabel.BackgroundTransparency = 1
+StatsLabel.Text = "WAVE: 0 | COINS: 0 | HP: 100/100"
+StatsLabel.TextColor3 = Color3.fromRGB(240, 240, 250)
+StatsLabel.Font = Enum.Font.GothamMedium
+StatsLabel.TextSize = 10
+StatsLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatsLabel.Parent = MainFrame
+
+local Canvas = Instance.new("Frame")
+Canvas.Size = UDim2.new(0.44, 0, 0.8, 0)
+Canvas.Position = UDim2.new(0.02, 0, 0.17, 0)
+Canvas.BackgroundColor3 = Color3.fromRGB(4, 4, 8)
+Canvas.ClipsDescendants = true
+Instance.new("UICorner").Parent = Canvas
+Canvas.Parent = MainFrame
+
+local CanvasStroke = Instance.new("UIStroke")
+CanvasStroke.Color = Color3.fromRGB(45, 50, 70)
+CanvasStroke.Parent = Canvas
+
+local SidePanel = Instance.new("Frame")
+SidePanel.Size = UDim2.new(0.5, 0, 0.8, 0)
+SidePanel.Position = UDim2.new(0.48, 0, 0.17, 0)
+SidePanel.BackgroundColor3 = Color3.fromRGB(15, 15, 26)
+SidePanel.Parent = MainFrame
+Instance.new("UICorner").Parent = SidePanel
+
+UpgradeScroll = Instance.new("ScrollingFrame")
+UpgradeScroll.Size = UDim2.new(0.96, 0, 0.74, 0)
+UpgradeScroll.Position = UDim2.new(0.02, 0, 0.02, 0)
+UpgradeScroll.BackgroundTransparency = 1
+UpgradeScroll.CanvasSize = UDim2.new(0, 0, 3.8, 0) 
+UpgradeScroll.ScrollBarThickness = 4
+UpgradeScroll.Parent = SidePanel
+
+local ShopList = Instance.new("UIListLayout")
+ShopList.Padding = UDim.new(0, 5)
+ShopList.Parent = UpgradeScroll
+
+local UpgradeButtons = {
+	Damage = createUpgradeButton("Damage", GameState.Upgrades.Damage.Display),
+	FireRate = createUpgradeButton("FireRate", GameState.Upgrades.FireRate.Display),
+	Speed = createUpgradeButton("Speed", GameState.Upgrades.Speed.Display),
+	MaxHP = createUpgradeButton("MaxHP", GameState.Upgrades.MaxHP.Display),
+	Economy = createUpgradeButton("Economy", GameState.Upgrades.Economy.Display),
+	CritMatrix = createUpgradeButton("CritMatrix", GameState.Upgrades.CritMatrix.Display),
+	TwinSplit = createUpgradeButton("TwinSplit", GameState.Upgrades.TwinSplit.Display),
+	MagnetField = createUpgradeButton("MagnetField", GameState.Upgrades.MagnetField.Display),
+	NanoRegen = createUpgradeButton("NanoRegen", GameState.Upgrades.NanoRegen.Display),
+	HyperPierce = createUpgradeButton("HyperPierce", GameState.Upgrades.HyperPierce.Display),
+	FlakRounds = createUpgradeButton("FlakRounds", GameState.Upgrades.FlakRounds.Display),
+	ReaperDrive = createUpgradeButton("ReaperDrive", GameState.Upgrades.ReaperDrive.Display),
+	ReflexField = createUpgradeButton("ReflexField", GameState.Upgrades.ReflexField.Display),
+	FameEngine = createUpgradeButton("FameEngine", GameState.Upgrades.FameEngine.Display),
+	OverdriveCap = createUpgradeButton("OverdriveCap", GameState.Upgrades.OverdriveCap.Display)
+}
+
+for _, btn in pairs(UpgradeButtons) do
+	btn.Parent = UpgradeScroll
+end
+
+ManualControls = Instance.new("Frame")
+ManualControls.Size = UDim2.new(0.94, 0, 0.2, 0)
+ManualControls.Position = UDim2.new(0.03, 0, 0.78, 0)
+ManualControls.BackgroundTransparency = 1
+ManualControls.Parent = SidePanel
+
+local LeftBtn = createArrow("◀ STEER LEFT", UDim2.new(0, 0, 0.1, 0))
+LeftBtn.Parent = ManualControls
+local RightBtn = createArrow("STEER RIGHT ▶", UDim2.new(0.53, 0, 0.1, 0))
+RightBtn.Parent = ManualControls
+
+--------------------------------------------------------------------------------
+-- GAME ENTITIES (JET INTERCEPTOR CONFIGURATION)
+--------------------------------------------------------------------------------
+local Jet = Instance.new("Frame")
+Jet.Size = UDim2.new(0.095, 0, 0.075, 0) 
+Jet.Position = UDim2.new(0.5, 0, 0.88, 0)
+Jet.AnchorPoint = Vector2.new(0.5, 0.5)
+Jet.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+Jet.BorderSizePixel = 0
+Jet.ZIndex = 4
+Jet.Parent = Canvas
+Instance.new("UICorner").Parent = Jet
+
+local LeftWing = Instance.new("Frame")
+LeftWing.Size = UDim2.new(0.4, 0, 0.6, 0)
+LeftWing.Position = UDim2.new(-0.35, 0, 0.3, 0)
+LeftWing.BackgroundColor3 = Color3.fromRGB(0, 100, 210)
+LeftWing.BorderSizePixel = 0
+LeftWing.ZIndex = 3
+LeftWing.Parent = Jet
+Instance.new("UICorner").Parent = LeftWing
+
+local RightWing = LeftWing:Clone()
+RightWing.Position = UDim2.new(0.95, 0, 0.3, 0)
+RightWing.Parent = Jet
+
+local JetNose = Instance.new("Frame")
+JetNose.Size = UDim2.new(0.5, 0, 0.5, 0)
+JetNose.Position = UDim2.new(0.25, 0, -0.22, 0)
+JetNose.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
+JetNose.Rotation = 45
+JetNose.BorderSizePixel = 0
+JetNose.ZIndex = 4
+JetNose.Parent = Jet
+
+local Overlay = Instance.new("TextButton")
+Overlay.Size = UDim2.new(1, 0, 1, 0)
+Overlay.BackgroundColor3 = Color3.fromRGB(6, 6, 10)
+Overlay.BackgroundTransparency = 0.1
+Overlay.Text = "LAUNCH STRATEGIC ENGAGEMENT"
+Overlay.TextColor3 = Color3.fromRGB(0, 255, 140)
+Overlay.Font = Enum.Font.GothamBold
+Overlay.TextSize = 11
+Overlay.ZIndex = 10
+Overlay.Parent = Canvas
+
+--------------------------------------------------------------------------------
+-- 5. FUNCTIONAL GAME MECHANICS ENGINE
+--------------------------------------------------------------------------------
+local function UpdateUI()
+	StatsLabel.Text = string.format("WAVE: %d | COINS: %d | HP: %d/%d | SCORE: %d", 
+		GameState.Wave, GameState.Coins, GameState.Health, GameState.MaxHealth, GameState.Score)
+	
+	for key, btn in pairs(UpgradeButtons) do
+		local data = GameState.Upgrades[key]
+		btn.Text = string.format("%s\nLVL %d [Cost: %d]", data.Display, data.Level, data.Cost)
+	end
+end
+
+local function AdjustScale(amount)
+	local currentCamera = Workspace.CurrentCamera
+	local maxAllowedX = currentCamera and (currentCamera.ViewportSize.X * 0.95) or 1200
+	local maxAllowedY = currentCamera and (currentCamera.ViewportSize.Y * 0.95) or 800
+	
+	local targetX = math.clamp(ScaleConfig.CurrentX + amount, ScaleConfig.MinX, maxAllowedX)
+	local targetY = math.clamp(ScaleConfig.CurrentY + (amount * 0.76), ScaleConfig.MinY, maxAllowedY)
+	
+	ScaleConfig.CurrentX = targetX
+	ScaleConfig.CurrentY = targetY
+	
+	MainFrame.Size = UDim2.new(0, targetX, 0, targetY)
+end
+
+Connections.ScaleUp = PlusBtn.MouseButton1Click:Connect(function() AdjustScale(ScaleConfig.Step) end)
+Connections.ScaleDown = MinusBtn.MouseButton1Click:Connect(function() AdjustScale(-ScaleConfig.Step) end)
+
+local function TriggerTemporalStasis()
+	if GameState.Paused or GameState.PauseCooldown or not GameState.Active then return end
+	GameState.Paused = true
+	GameState.PauseCooldown = true
+	StopBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+	
+	task.spawn(function()
+		for i = 5, 1, -1 do
+			StopBtn.Text = "⏳ STASIS: " .. i .. "s"
+			task.wait(1)
+		end
+		GameState.Paused = false
+		StopBtn.Text = "⏸ COOLDOWN"
+		
+		task.wait(8) 
+		StopBtn.BackgroundColor3 = Color3.fromRGB(160, 20, 240)
+		StopBtn.Text = "⏸ STASIS"
+		GameState.PauseCooldown = false
+	end)
+end
+
+Connections.StasisTrigger = StopBtn.MouseButton1Click:Connect(TriggerTemporalStasis)
+
+local function SpawnLootDrop(xScale, yScale, typeStr)
+	local drop = Instance.new("TextLabel")
+	drop.Size = UDim2.new(0.08, 0, 0.06, 0)
+	drop.Position = UDim2.new(xScale, 0, yScale, 0)
+	drop.AnchorPoint = Vector2.new(0.5, 0.5)
+	drop.BackgroundTransparency = 1
+	
+	if typeStr == "Coin" then
+		drop.Text = "★"
+		drop.TextColor3 = Color3.fromRGB(255, 215, 0) 
+	else
+		drop.Text = "⚡"
+		drop.TextColor3 = Color3.fromRGB(0, 255, 140) 
+	end
+	
+	drop.Font = Enum.Font.GothamBold
+	drop.TextSize = 14
+	drop.ZIndex = 6
+	drop.Parent = Canvas
+	
+	table.insert(Drops, {
+		Instance = drop,
+		Type = typeStr,
+		X = xScale,
+		Y = yScale,
+		Homing = false
+	})
+end
+
+local function FireWeaponArray()
+	if os.clock() - LastShotTime < GameState.FireRate then return end
+	LastShotTime = os.clock()
+	
+	local shotCount = (math.random(100) <= GameState.DoubleShotChance) and 4 or 2
+	local stepOffsets = (shotCount == 4) and {-0.04, -0.015, 0.015, 0.04} or {-0.02, 0.02}
+	
+	for _, offset in ipairs(stepOffsets) do
+		local bullet = Instance.new("Frame")
+		bullet.Size = UDim2.new(0.03, 0, 0.045, 0)
+		bullet.BackgroundColor3 = Color3.fromRGB(255, 235, 15)
+		bullet.Rotation = 45
+		bullet.BorderSizePixel = 0
+		bullet.ZIndex = 5
+		bullet.Position = UDim2.new(Jet.Position.X.Scale + offset, 0, Jet.Position.Y.Scale - 0.05, 0)
+		bullet.AnchorPoint = Vector2.new(0.5, 0.5)
+		bullet.Parent = Canvas
+		
+		local ratio = Instance.new("UIAspectRatioConstraint")
+		ratio.AspectRatio = 0.4
+		ratio.Parent = bullet
+		
+		table.insert(Bullets, {
+			Frame = bullet,
+			Life = GameState.PierceCount,
+			IsCrit = (math.random(100) <= GameState.CritChance)
+		})
+	end
+end
+
+local function BuildVessel(xScale, yScale, displayTitle, hpValue, color, isBoss, isTitan, isBehemoth)
+	local enemy = Instance.new("Frame")
+	
+	if isBoss then
+		enemy.Size = UDim2.new(0.36, 0, 0.1, 0)
+	elseif isBehemoth then
+		enemy.Size = UDim2.new(0.21, 0, 0.095, 0) 
+	elseif isTitan then
+		enemy.Size = UDim2.new(0.17, 0, 0.085, 0)
+	else
+		enemy.Size = UDim2.new(0.13, 0, 0.075, 0)
+	end
+	
+	enemy.Position = UDim2.new(xScale, 0, yScale, 0)
+	enemy.AnchorPoint = Vector2.new(0.5, 0.5)
+	enemy.BackgroundColor3 = color
+	enemy.ZIndex = 4
+	enemy.Parent = Canvas
+	Instance.new("UICorner").Parent = enemy
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = (isBoss or isBehemoth) and 2.5 or 1.5
+	stroke.Color = Color3.fromRGB(255, 255, 255)
+	stroke.Parent = enemy
+	
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 0.9, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = displayTitle .. " [" .. hpValue .. "]"
+	lbl.TextColor3 = Color3.fromRGB(10, 10, 10)
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = isBoss and 9 or 7
+	lbl.ZIndex = 5
+	lbl.Parent = enemy
+	
+	return enemy, lbl
+end
+
+local function StartNextWave()
+	if GameState.Spawning or not GameState.Active then return end
+	GameState.Spawning = true
+	
+	GameState.Wave = GameState.Wave + 1
+	GameState.IsBossWave = (GameState.Wave % 5 == 0)
+	
+	-- LINEAR SCALING BUFF: Adds exactly +0.95x threat modifier every 10 waves
+	local dynamicScaling = 1 + (0.95 * math.floor((GameState.Wave - 1) / 10))
+	local isEvolutionMilestone = (GameState.Wave > 1 and (GameState.Wave - 1) % 10 == 0)
+	
+	if GameState.Wave > 1 then
+		GameState.Health = math.min(GameState.MaxHealth, GameState.Health + GameState.ShieldRegen)
+	end
+	
+	local notification = Instance.new("TextLabel")
+	notification.Size = UDim2.new(0.9, 0, 0.15, 0)
+	notification.Position = UDim2.new(0.05, 0, 0.35, 0)
+	notification.BackgroundTransparency = 1
+	notification.Font = Enum.Font.GothamBold
+	notification.TextSize = 12
+	notification.ZIndex = 7
+	notification.Parent = Canvas
+	
+	-- Dynamic System Notifications
+	if GameState.IsBossWave then
+		notification.Text = "🚨 OVERLORD CONTACT IDENTIFIED 🚨"
+		notification.TextColor3 = Color3.fromRGB(255, 20, 70)
+	elseif isEvolutionMilestone then
+		notification.Text = string.format("⚡ THREAT SPIKE: ENEMIES MUTATED +0.95x (TIER %d) ⚡", math.floor((GameState.Wave - 1) / 10))
+		notification.TextColor3 = Color3.fromRGB(255, 130, 0)
+	else
+		notification.Text = "WARPING DESTINATION // WAVE " .. GameState.Wave
+		notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+	end
+	
+	local tween = TweenService:Create(notification, TweenInfo.new(1.4), {TextTransparency = 1})
+	tween:Play()
+	task.delay(1.4, function() notification:Destroy() end)
+	
+	task.spawn(function()
+		task.wait(1.0)
+		
+		local dbIdx = math.clamp(GameState.Wave, 1, 50)
+		local dataStructure = EnemyDatabase[dbIdx]
+		
+		if GameState.IsBossWave then
+			local bossHp = math.floor(dataStructure.BaseHP * 4 * dynamicScaling)
+			local bossTitle = "BOSS: " .. dataStructure.Name
+			local frame, lbl = BuildVessel(0.5, -0.1, bossTitle, bossHp, dataStructure.Color, true, false, false)
+			table.insert(Enemies, {
+				Frame = frame, 
+				Label = lbl, 
+				HP = bossHp, 
+				MaxHP = bossHp, 
+				IsBoss = true, 
+				DirectionX = 1, 
+				SpeedMod = 0.45 * dynamicScaling, 
+				IsRainbow = false, 
+				Data = dataStructure, 
+				DisplayTitle = bossTitle
+			})
+		else
+			local spawnsCount = math.min(6, 2 + math.floor(GameState.Wave * 0.4))
+			for i = 1, spawnsCount do
+				local roll = math.random(100)
+				local hpMultiplier = 1
+				local speedMultiplier = 1
+				local mutationTag = ""
+				local isRainbow = false
+				local isTitan = false
+				local isBehemoth = false
+				
+				if roll <= 5 then
+					isRainbow = true
+					mutationTag = "🌈 "
+				elseif roll <= 12 then
+					isBehemoth = true
+					hpMultiplier = 8 
+					mutationTag = "🧱 "
+				elseif roll <= 24 then
+					isTitan = true
+					hpMultiplier = 3 
+					mutationTag = "💪 "
+				elseif roll <= 36 then
+					speedMultiplier = 4.0 
+					mutationTag = "🚀 "
+				elseif roll <= 55 then
+					speedMultiplier = 1.95 
+					mutationTag = "⚡ "
+				end
+				
+				local finalHp = math.floor(dataStructure.BaseHP * hpMultiplier * dynamicScaling)
+				local calculatedTitle = mutationTag .. dataStructure.Name
+				
+				local frame, lbl = BuildVessel(math.random(15, 85)/100, -0.08 * i, calculatedTitle, finalHp, dataStructure.Color, false, isTitan, isBehemoth)
+				table.insert(Enemies, {
+					Frame = frame, 
+					Label = lbl, 
+					HP = finalHp, 
+					MaxHP = finalHp, 
+					IsBoss = false, 
+					SpeedMod = dataStructure.SpeedModifier * speedMultiplier * dynamicScaling, 
+					IsRainbow = isRainbow,
+					Data = dataStructure,
+					DisplayTitle = calculatedTitle
+				})
+			end
+		end
+		
+		UpdateUI()
+		GameState.Spawning = false
+	end)
+end
+
+local function CheckCollision(gui1, gui2)
+	local p1, s1 = gui1.AbsolutePosition, gui1.AbsoluteSize
+	local p2, s2 = gui2.AbsolutePosition, gui2.AbsoluteSize
+	return p1.X < p2.X + s2.X and p2.X < p1.X + s1.X and p1.Y < p2.Y + s2.Y and p2.Y < p1.Y + s1.Y
+end
+
+local function StartGame()
+	for _, e in pairs(Enemies) do if e.Frame then e.Frame:Destroy() end end
+	for _, b in pairs(Bullets) do if b.Frame then b.Frame:Destroy() end end
+	for _, d in pairs(Drops) do if d.Instance then d.Instance:Destroy() end end
+	Enemies = {}
+	Bullets = {}
+	Drops = {}
+	
+	GameState.Score = 0
+	GameState.Wave = 0
+	GameState.Health = GameState.MaxHealth
+	GameState.Active = true
+	GameState.Paused = false
+	GameState.Spawning = false
+	Overlay.Visible = false
+	Jet.Position = UDim2.new(0.5, 0, 0.88, 0)
+	
+	UpdateUI()
+	StartNextWave()
+end
+
+local function GameOver()
+	GameState.Active = false
+	Overlay.Text = "HULL DESTRUCTION OBSERVED\n\nCLICK TO INITIALIZE RE-FLIGHT"
+	Overlay.TextColor3 = Color3.fromRGB(250, 50, 50)
+	Overlay.Visible = true
+end
+
+--------------------------------------------------------------------------------
+-- 6. NAVIGATION & CONTROLS INTERFACES
+--------------------------------------------------------------------------------
+local function TrackNavigation(input)
+	if not GameState.Active or GameState.Paused then return end
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		local relativeX = (input.Position.X - Canvas.AbsolutePosition.X) / Canvas.AbsoluteSize.X
+		Jet.Position = UDim2.new(math.clamp(relativeX, 0.06, 0.94), 0, Jet.Position.Y.Scale, 0)
+	end
+end
+
+Connections.InputChg = Canvas.InputChanged:Connect(TrackNavigation)
+Connections.InputBgn = Canvas.InputBegan:Connect(TrackNavigation)
+
+local steerDirection = 0
+Connections.LeftDown = LeftBtn.MouseButton1Down:Connect(function() steerDirection = -1 end)
+Connections.LeftUp = LeftBtn.InputEnded:Connect(function() if steerDirection == -1 then steerDirection = 0 end end)
+Connections.RightDown = RightBtn.MouseButton1Down:Connect(function() steerDirection = 1 end)
+Connections.RightUp = RightBtn.InputEnded:Connect(function() if steerDirection == 1 then steerDirection = 0 end end)
+
+Connections.LaunchClick = Overlay.MouseButton1Click:Connect(StartGame)
+
+--------------------------------------------------------------------------------
+-- 7. UPGRADE DISPATCH CONNECTION DISPATCHERS
+--------------------------------------------------------------------------------
+local function ConnectShopTrigger(key, callback)
+	Connections[key .. "Upgrade"] = UpgradeButtons[key].MouseButton1Click:Connect(function()
+		local data = GameState.Upgrades[key]
+		if GameState.Coins >= data.Cost then
+			GameState.Coins = GameState.Coins - data.Cost
+			data.Level = data.Level + 1
+			callback(data)
+			data.Cost = math.floor(data.Cost * 1.55)
+			UpdateUI()
+		end
+	end)
+end
+
+ConnectShopTrigger("Damage", function() GameState.Damage = GameState.Damage + 6 end)
+ConnectShopTrigger("FireRate", function() GameState.FireRate = math.max(0.08, GameState.FireRate - 0.035) end)
+ConnectShopTrigger("Speed", function() GameState.Speed = GameState.Speed + 0.004 end)
+ConnectShopTrigger("MaxHP", function() 
+	GameState.MaxHealth = GameState.MaxHealth + 20 
+	GameState.Health = GameState.Health + 20 
+end)
+ConnectShopTrigger("Economy", function() GameState.CoinMultiplier = GameState.CoinMultiplier + 0.4 end)
+ConnectShopTrigger("CritMatrix", function() GameState.CritChance = math.min(75, GameState.CritChance + 6) end)
+ConnectShopTrigger("TwinSplit", function() GameState.DoubleShotChance = math.min(70, GameState.DoubleShotChance + 7) end)
+ConnectShopTrigger("MagnetField", function() 
+	GameState.MagnetRange = GameState.MagnetRange + 0.04 
+	GameState.MagnetSpeed = GameState.MagnetSpeed + 0.08
+end)
+ConnectShopTrigger("NanoRegen", function() GameState.ShieldRegen = GameState.ShieldRegen + 4 end)
+ConnectShopTrigger("HyperPierce", function() GameState.PierceCount = GameState.PierceCount + 1 end)
+ConnectShopTrigger("FlakRounds", function() GameState.ExplosiveRadius = GameState.ExplosiveRadius + 8 end)
+ConnectShopTrigger("ReaperDrive", function() GameState.BossSlayerMult = GameState.BossSlayerMult + 0.35 end)
+ConnectShopTrigger("ReflexField", function() GameState.DodgeChance = math.min(45, GameState.DodgeChance + 4) end)
+ConnectShopTrigger("FameEngine", function() GameState.ScoreEngine = GameState.ScoreEngine + 0.5 end)
+ConnectShopTrigger("OverdriveCap", function() GameState.Damage = GameState.Damage + 15 end)
+
+--------------------------------------------------------------------------------
+-- 8. CORE GAMEPLAY HEARTBEAT LOOP
+--------------------------------------------------------------------------------
+Connections.MainLoop = RunService.Heartbeat:Connect(function(dt)
+	if not GameState.Active or GameState.Paused then return end
+	
+	if steerDirection ~= 0 then
+		local newX = math.clamp(Jet.Position.X.Scale + (steerDirection * GameState.Speed), 0.06, 0.94)
+		Jet.Position = UDim2.new(newX, 0, Jet.Position.Y.Scale, 0)
+	end
+	
+	FireWeaponArray()
+	
+	for i = #Bullets, 1, -1 do
+		local b = Bullets[i]
+		if b and b.Frame and b.Frame.Parent then
+			b.Frame.Position = UDim2.new(b.Frame.Position.X.Scale, 0, b.Frame.Position.Y.Scale - (0.34 * dt), 0)
+			if b.Frame.Position.Y.Scale < -0.05 then
+				b.Frame:Destroy()
+				table.remove(Bullets, i)
+			end
+		else
+			table.remove(Bullets, i)
+		end
+	end
+	
+	-- COIN SCALING CALCULUS: Adds an additive +0.5x multiplier every 5 waves
+	local coinScaling = 1 + (0.5 * math.floor((GameState.Wave - 1) / 5))
+	
+	for i = #Drops, 1, -1 do
+		local d = Drops[i]
+		if d and d.Instance and d.Instance.Parent then
+			local jetX = Jet.Position.X.Scale
+			local jetY = Jet.Position.Y.Scale
+			local distance = math.sqrt(math.pow(d.X - jetX, 2) + math.pow(d.Y - jetY, 2))
+			
+			if distance <= GameState.MagnetRange then
+				d.Homing = true
+			end
+			
+			if d.Homing then
+				d.X = d.X + (jetX - d.X) * (GameState.MagnetSpeed * dt * 14)
+				d.Y = d.Y + (jetY - d.Y) * (GameState.MagnetSpeed * dt * 14)
+			else
+				d.Y = d.Y + (0.09 * dt)
+			end
+			
+			d.Instance.Position = UDim2.new(d.X, 0, d.Y, 0)
+			
+			if distance < 0.05 then
+				if d.Type == "Coin" then
+					-- Applied dynamic coin scaling to physical map pickups
+					GameState.Coins = GameState.Coins + math.floor(math.random(8, 15) * GameState.CoinMultiplier * coinScaling)
+				else
+					GameState.Health = math.min(GameState.MaxHealth, GameState.Health + 10)
+				end
+				d.Instance:Destroy()
+				table.remove(Drops, i)
+				UpdateUI()
+			elseif d.Y > 1.05 then
+				d.Instance:Destroy()
+				table.remove(Drops, i)
+			end
+		else
+			table.remove(Drops, i)
+		end
+	end
+	
+	for i = #Enemies, 1, -1 do
+		local e = Enemies[i]
+		if e and e.Frame and e.Frame.Parent then
+			local frame = e.Frame
+			
+			if e.IsBoss then
+				local stepY = frame.Position.Y.Scale + (0.012 * dt)
+				local stepX = frame.Position.X.Scale + (e.DirectionX * 0.22 * dt)
+				if stepX > 0.76 or stepX < 0.24 then
+					e.DirectionX = -e.DirectionX
+				end
+				frame.Position = UDim2.new(stepX, 0, stepY, 0)
+			else
+				frame.Position = UDim2.new(frame.Position.X.Scale, 0, frame.Position.Y.Scale + (0.045 * e.SpeedMod * dt), 0)
+			end
+			
+			if e.IsRainbow then
+				frame.BackgroundColor3 = Color3.fromHSV((os.clock() * 2.5) % 1, 0.85, 0.95)
+			end
+			
+			for j = #Bullets, 1, -1 do
+				local b = Bullets[j]
+				if b and b.Frame and CheckCollision(b.Frame, frame) then
+					local dealDmg = b.IsCrit and (GameState.Damage * 2) or GameState.Damage
+					if e.IsBoss then dealDmg = dealDmg * GameState.BossSlayerMult end
+					
+					e.HP = e.HP - dealDmg
+					e.Label.Text = e.DisplayTitle .. " [" .. math.max(0, e.HP) .. "]"
+					
+					b.Life = b.Life - 1
+					if b.Life <= 0 then
+						b.Frame:Destroy()
+						table.remove(Bullets, j)
+					end
+					
+					local oldCol = frame.BackgroundColor3
+					frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+					task.delay(0.04, function() if frame and not e.IsRainbow then frame.BackgroundColor3 = oldCol end end)
+				end
+			end
+			
+			if e.HP <= 0 then
+				GameState.Score = GameState.Score + math.floor(e.Data.ScoreAward * GameState.ScoreEngine)
+				
+				if e.IsRainbow then
+					-- Applied dynamic coin scaling onto direct rainbow drop payouts
+					local rainbowPayout = math.floor(100 * coinScaling)
+					GameState.Coins = GameState.Coins + rainbowPayout
+					
+					local notifyPop = Instance.new("TextLabel")
+					notifyPop.Size = UDim2.new(0.8, 0, 0.05, 0)
+					notifyPop.Position = UDim2.new(0.1, 0, 0.22, 0)
+					notifyPop.BackgroundTransparency = 1
+					notifyPop.Text = "🌈 RAINBOW PAYOUT: +" .. rainbowPayout .. " COINS!"
+					notifyPop.TextColor3 = Color3.fromRGB(255, 230, 0)
+					notifyPop.Font = Enum.Font.GothamBold
+					notifyPop.TextSize = 10
+					notifyPop.ZIndex = 8
+					notifyPop.Parent = Canvas
+					TweenService:Create(notifyPop, TweenInfo.new(1.4), {TextTransparency = 1, Position = UDim2.new(0.1, 0, 0.12, 0)}):Play()
+					task.delay(1.4, function() notifyPop:Destroy() end)
+				end
+				
+				if e.IsBoss then
+					for k = 1, 6 do
+						SpawnLootDrop(frame.Position.X.Scale + (math.random(-10, 10)/100), frame.Position.Y.Scale + (math.random(-5, 5)/100), "Coin")
+					end
+					SpawnLootDrop(frame.Position.X.Scale, frame.Position.Y.Scale, "PowerUp")
+				else
+					if e.Data.BaseHP >= 30 then
+						if math.random(100) <= 10 then
+							SpawnLootDrop(frame.Position.X.Scale, frame.Position.Y.Scale, "PowerUp")
+						end
+						SpawnLootDrop(frame.Position.X.Scale, frame.Position.Y.Scale, "Coin")
+					elseif math.random(100) <= 40 then
+						SpawnLootDrop(frame.Position.X.Scale, frame.Position.Y.Scale, "Coin")
+					end
+				end
+				
+				frame:Destroy()
+				table.remove(Enemies, i)
+				UpdateUI()
+			elseif CheckCollision(frame, Jet) or frame.Position.Y.Scale > 1.02 then
+				if not (math.random(100) <= GameState.DodgeChance) then
+					local loss = e.IsBoss and 40 or 12
+					GameState.Health = math.max(0, GameState.Health - loss)
+				end
+				
+				frame:Destroy()
+				table.remove(Enemies, i)
+				UpdateUI()
+				
+				if GameState.Health <= 0 then
+					GameOver()
+				end
+			end
+		else
+			table.remove(Enemies, i)
+		end
+	end
+	
+	if #Enemies == 0 and GameState.Active and not GameState.Spawning then
+		StartNextWave()
+	end
+end)
+
+Connections.CloseClick = CloseBtn.MouseButton1Click:Connect(function()
+	GameState.Active = false
+	for _, conn in pairs(Connections) do if conn then conn:Disconnect() end end
+	ScreenGui:Destroy()
+end)
+
+UpdateUI()
