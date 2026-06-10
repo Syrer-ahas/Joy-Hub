@@ -1,0 +1,417 @@
+-- Modern 2D Flappy Bird Executor Script (Light Theme / Sharp UI Edition)
+-- Compatible with Mobile & PC Executors
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+assert(LocalPlayer, "Player not found!")
+
+-- Core Screen GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FlappySkyMinigameUI_LightSharp"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Absolute Bulletproof UI Parenting for Executors
+local targetParent = nil
+if gethui then
+    targetParent = gethui()
+else
+    local success, coregui = pcall(function() return game:GetService("CoreGui") end)
+    if success and coregui then
+        targetParent = coregui
+    else
+        targetParent = LocalPlayer:WaitForChild("PlayerGui", 10)
+    end
+end
+
+if not targetParent then
+    error("Could not find a valid GUI parent!")
+end
+ScreenGui.Parent = targetParent
+
+-- Main Window Frame (Updated to Premium Light Gray)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(242, 245, 248) -- Lighter than cyan
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+
+-- Sharp Corner Profiles (Less Roundy)
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 6) -- Crisp, low-radius edge
+MainCorner.Parent = MainFrame
+
+-- Animated Yellow Border System
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2.5
+UIStroke.Color = Color3.fromRGB(255, 230, 0)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.LineJoinMode = Enum.LineJoinMode.Round
+UIStroke.Parent = MainFrame
+
+local BorderGradient = Instance.new("UIGradient")
+BorderGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 215, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(210, 180, 20)), -- Bright moving core gap
+    ColorSequenceKeypoint.new(0.8, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 240, 100))
+})
+BorderGradient.Parent = UIStroke
+
+-- UIScale Component for Global UI Sizing
+local UiScale = Instance.new("UIScale")
+UiScale.Parent = MainFrame
+UiScale.Scale = 1.0
+
+-- Top Bar UI (Slightly deeper light gray accent)
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 42)
+TopBar.BackgroundColor3 = Color3.fromRGB(228, 232, 238)
+TopBar.BorderSizePixel = 0
+TopBar.ZIndex = 5
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 6) -- Matched sharp style
+TopCorner.Parent = TopBar
+
+-- Title Text (Dark charcoal font for contrast)
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 250, 1, 0)
+Title.Position = UDim2.new(0, 16, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🐦 Flappy Sky Cruise"
+Title.TextColor3 = Color3.fromRGB(45, 50, 60) -- Dark readable text
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 5
+Title.Parent = TopBar
+
+-- UI Layout Configuration Helper
+local function createButton(name, text, pos, size, bg, parent)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = bg
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.ZIndex = 5
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = btn
+    return btn
+end
+
+-- Control Elements (+ , - , Close)
+local CloseBtn = createButton("CloseBtn", "X", UDim2.new(1, -36, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(235, 90, 90), TopBar)
+local PlusBtn = createButton("PlusBtn", "+", UDim2.new(1, -72, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(65, 185, 115), TopBar)
+local MinusBtn = createButton("MinusBtn", "-", UDim2.new(1, -108, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(85, 125, 200), TopBar)
+
+-- Responsive Scaling Action Logic
+PlusBtn.MouseButton1Click:Connect(function()
+    UiScale.Scale = math.clamp(UiScale.Scale + 0.1, 0.5, 2.2)
+end)
+
+MinusBtn.MouseButton1Click:Connect(function()
+    UiScale.Scale = math.clamp(UiScale.Scale - 0.1, 0.5, 2.2)
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Gameplay Display Metrics Frame (Kept original roundness and vivid cyan background)
+local GameArea = Instance.new("Frame")
+GameArea.Name = "GameArea"
+GameArea.Size = UDim2.new(1, -20, 1, -64)
+GameArea.Position = UDim2.new(0, 10, 0, 52)
+GameArea.BackgroundColor3 = Color3.fromRGB(70, 185, 225) -- Vibrant Cyan
+GameArea.ClipsDescendants = true
+GameArea.Parent = MainFrame
+
+local GameCorner = Instance.new("UICorner")
+GameCorner.CornerRadius = UDim.new(0, 10) -- Untouched roundness
+GameCorner.Parent = GameArea
+
+-- Live Score Board Outputs
+local MetricsLabel = Instance.new("TextLabel")
+MetricsLabel.Size = UDim2.new(1, -20, 0, 30)
+MetricsLabel.Position = UDim2.new(0, 12, 0, 6)
+MetricsLabel.BackgroundTransparency = 1
+MetricsLabel.Text = "Score: 0"
+MetricsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+MetricsLabel.TextSize = 16
+MetricsLabel.Font = Enum.Font.GothamBold
+MetricsLabel.TextXAlignment = Enum.TextXAlignment.Left
+MetricsLabel.ZIndex = 4
+MetricsLabel.Parent = GameArea
+
+local NotificationLabel = Instance.new("TextLabel")
+NotificationLabel.Size = UDim2.new(1, -20, 0, 30)
+NotificationLabel.Position = UDim2.new(0, 12, 0, 6)
+NotificationLabel.BackgroundTransparency = 1
+NotificationLabel.Text = ""
+NotificationLabel.TextColor3 = Color3.fromRGB(255, 235, 60)
+NotificationLabel.TextSize = 14
+NotificationLabel.Font = Enum.Font.GothamBold
+NotificationLabel.TextXAlignment = Enum.TextXAlignment.Right
+NotificationLabel.ZIndex = 4
+NotificationLabel.Parent = GameArea
+
+-- Action Hint Instructions Label
+local HintLabel = Instance.new("TextLabel")
+HintLabel.Size = UDim2.new(1, 0, 0, 20)
+HintLabel.Position = UDim2.new(0, 0, 1, -24)
+HintLabel.BackgroundTransparency = 1
+HintLabel.Text = "Tap Sky Area or Press [SPACEBAR] to Flap"
+HintLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
+HintLabel.TextSize = 12
+HintLabel.Font = Enum.Font.Gotham
+HintLabel.ZIndex = 4
+HintLabel.Parent = GameArea
+
+-- Game Bird Instance
+local Bird = Instance.new("TextLabel")
+Bird.Name = "Bird"
+Bird.Size = UDim2.new(0, 30, 0, 30)
+Bird.Position = UDim2.new(0, 70, 0, 110)
+Bird.BackgroundTransparency = 1
+Bird.Text = "🐦"
+Bird.TextSize = 26
+Bird.ZIndex = 3
+Bird.Parent = GameArea
+
+-- Core State Variables Engine (Balanced flat-speed runtime loop)
+local gameActive = true
+local constantSpeed = 3.8 
+local currentScore = 0
+local timeElapsed = 0
+
+-- Engine Physics Constant Adjustments
+local birdYVelocity = 0
+local gravityAcceleration = 950
+local flapLiftForce = -290
+local maxFallSpeed = 420
+
+local activeObstacles = {}
+local activeClouds = {}
+local itemSpawnCountdown = 0.5
+
+-- Background Cloud Generator Setup
+local function generateCloudElement(isInitial, customX)
+    local cloud = Instance.new("TextLabel")
+    cloud.Name = "Cloud"
+    cloud.BackgroundTransparency = 1
+    cloud.Text = "☁️"
+    cloud.TextSize = math.random(35, 55)
+    cloud.TextTransparency = 0.35
+    cloud.Size = UDim2.new(0, 60, 0, 40)
+    
+    local startX = isInitial and customX or 1.1
+    cloud.Position = UDim2.new(startX, 0, 0, math.random(15, 120))
+    cloud.ZIndex = 1
+    cloud.Parent = GameArea
+    table.insert(activeClouds, cloud)
+end
+
+-- Pre-populate the sky with clouds
+for i = 1, 4 do
+    generateCloudElement(true, (i - 1) * 0.28 + math.random(0, 10)/100)
+end
+
+-- Trigger Flap Lift Upwards
+local function triggerBirdFlap()
+    if gameActive then
+        birdYVelocity = flapLiftForce
+    end
+end
+
+-- Map Mechanical Control Triggers
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Space then
+        triggerBirdFlap()
+    end
+end)
+
+-- Overlay Frame Layer Touch / Click Interaction Window
+local MobileClickZone = Instance.new("TextButton")
+MobileClickZone.Size = UDim2.new(1, 0, 1, 0)
+MobileClickZone.BackgroundTransparency = 1
+MobileClickZone.Text = ""
+MobileClickZone.ZIndex = 4
+MobileClickZone.Parent = GameArea
+
+MobileClickZone.MouseButton1Click:Connect(function()
+    triggerBirdFlap()
+end)
+
+-- Reset Operational Game System Functions Post Collapse
+local function resetGameSystem()
+    for _, obs in ipairs(activeObstacles) do
+        obs:Destroy()
+    end
+    activeObstacles = {}
+    
+    currentScore = 0
+    timeElapsed = 0
+    birdYVelocity = 0
+    Bird.Position = UDim2.new(0, 70, 0, 110)
+    itemSpawnCountdown = 0.5
+    gameActive = true
+    NotificationLabel.Text = ""
+end
+
+-- Structural Intersection Evaluation Bounding Boxes
+local function isColliding(element1, element2)
+    local absPos1, absSize1 = element1.AbsolutePosition, element1.AbsoluteSize
+    local absPos2, absSize2 = element2.AbsolutePosition, element2.AbsoluteSize
+    
+    return absPos1.X < absPos2.X + absSize2.X - 4 and
+           absPos1.X + absSize1.X - 4 > absPos2.X and
+           absPos1.Y < absPos2.Y + absSize2.Y - 4 and
+           absPos1.Y + absSize1.Y - 4 > absPos2.Y
+end
+
+-- Primary Run-Loop Matrix Connect Update Channel
+local connection
+connection = RunService.Heartbeat:Connect(function(deltaTime)
+    if not ScreenGui or not ScreenGui.Parent then
+        connection:Disconnect()
+        return
+    end
+    
+    -- Animate the Outline Border Gradient Cycle (Yellow Neon Stream)
+    BorderGradient.Rotation = (BorderGradient.Rotation + (deltaTime * 120)) % 360
+    
+    if not gameActive then return end
+    
+    timeElapsed = timeElapsed + deltaTime
+    currentScore = math.floor(timeElapsed * 12)
+    MetricsLabel.Text = string.format("Score: %d", currentScore)
+    
+    -- Slow Parallax Background Cloud Translation Scroll
+    for index = #activeClouds, 1, -1 do
+        local cloud = activeClouds[index]
+        if cloud and cloud.Parent then
+            cloud.Position = cloud.Position - UDim2.new(0, (constantSpeed * 12) * deltaTime, 0, 0)
+            
+            if cloud.AbsolutePosition.X < GameArea.AbsolutePosition.X - 70 then
+                cloud:Destroy()
+                table.remove(activeClouds, index)
+                generateCloudElement(false)
+            end
+        end
+    end
+    
+    -- Continuous Constant Flappy Gravity Calculations Update
+    birdYVelocity = math.min(birdYVelocity + (gravityAcceleration * deltaTime), maxFallSpeed)
+    local currentYOffset = Bird.Position.Y.Offset + (birdYVelocity * deltaTime)
+    
+    -- Boundary Collision Checks (Ceiling & Floor)
+    local maxPlayableHeight = GameArea.AbsoluteSize.Y
+    if currentYOffset <= 0 or (maxPlayableHeight > 0 and currentYOffset >= maxPlayableHeight - 25) then
+        gameActive = false
+        NotificationLabel.Text = "💥 CRASHED! Tap sky to restart..."
+        task.wait(0.6)
+        
+        local clickToRestartConnection
+        clickToRestartConnection = MobileClickZone.MouseButton1Click:Connect(function()
+            clickToRestartConnection:Disconnect()
+            resetGameSystem()
+        end)
+        return
+    end
+    Bird.Position = UDim2.new(0, 70, 0, currentYOffset)
+    
+    -- Procedural Fixed-Interval Pipe Generation Channel
+    itemSpawnCountdown = itemSpawnCountdown - deltaTime
+    if itemSpawnCountdown <= 0 then
+        local canvasHeight = GameArea.AbsoluteSize.Y
+        if canvasHeight == 0 then canvasHeight = 256 end
+        
+        local gapHeight = 84 
+        local minCenter = 45 + (gapHeight / 2)
+        local maxCenter = canvasHeight - 45 - (gapHeight / 2)
+        local gapCenter = math.random(minCenter, maxCenter)
+        
+        -- Top Structural Pipe Setup
+        local topPipe = Instance.new("Frame")
+        topPipe.Name = "TopPipe"
+        topPipe.BackgroundColor3 = Color3.fromRGB(95, 210, 95) 
+        topPipe.BorderSizePixel = 0
+        topPipe.Size = UDim2.new(0, 38, 0, gapCenter - (gapHeight / 2))
+        topPipe.Position = UDim2.new(1, 0, 0, 0)
+        topPipe.ZIndex = 2
+        topPipe.Parent = GameArea
+        
+        local topStroke = Instance.new("UIStroke")
+        topStroke.Color = Color3.fromRGB(50, 120, 50)
+        topStroke.Thickness = 2
+        topStroke.Parent = topPipe
+        
+        -- Bottom Structural Pipe Setup
+        local bottomPipeTopY = gapCenter + (gapHeight / 2)
+        local bottomPipe = Instance.new("Frame")
+        bottomPipe.Name = "BottomPipe"
+        bottomPipe.BackgroundColor3 = Color3.fromRGB(95, 210, 95)
+        bottomPipe.BorderSizePixel = 0
+        bottomPipe.Size = UDim2.new(0, 38, 0, canvasHeight - bottomPipeTopY)
+        bottomPipe.Position = UDim2.new(1, 0, 0, bottomPipeTopY)
+        bottomPipe.ZIndex = 2
+        bottomPipe.Parent = GameArea
+        
+        local bottomStroke = Instance.new("UIStroke")
+        bottomStroke.Color = Color3.fromRGB(50, 120, 50)
+        bottomStroke.Thickness = 2
+        bottomStroke.Parent = bottomPipe
+        
+        table.insert(activeObstacles, topPipe)
+        table.insert(activeObstacles, bottomPipe)
+        
+        itemSpawnCountdown = 2.1
+    end
+    
+    -- Translate Pipe Barriers Right-to-Left and Verify Collisions
+    for index = #activeObstacles, 1, -1 do
+        local currentObstacle = activeObstacles[index]
+        if currentObstacle and currentObstacle.Parent then
+            local translationPixels = (constantSpeed * 45) + 160
+            currentObstacle.Position = currentObstacle.Position - UDim2.new(0, translationPixels * deltaTime, 0, 0)
+            
+            if isColliding(Bird, currentObstacle) then
+                gameActive = false
+                NotificationLabel.Text = "💥 WRECKED! Tap sky to restart..."
+                task.wait(0.6)
+                
+                local clickToRestartConnection
+                clickToRestartConnection = MobileClickZone.MouseButton1Click:Connect(function()
+                    clickToRestartConnection:Disconnect()
+                    resetGameSystem()
+                end)
+                return
+            end
+            
+            if currentObstacle.AbsolutePosition.X < GameArea.AbsolutePosition.X - 50 then
+                currentObstacle:Destroy()
+                table.remove(activeObstacles, index)
+            end
+        end
+    end
+end)
