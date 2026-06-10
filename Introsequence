@@ -1,0 +1,135 @@
+-- Joy Hub Cinematic Fullscreen Intro Sequence (Ultra-Crisp Vector Edition)
+-- Compatible with Mobile & PC Executors
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+assert(LocalPlayer, "Player layer runtime missing!")
+
+-- Core Screen GUI Setup (Absolute Fullscreen)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "JoyHubIntroUI_CrystalClear"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true -- Fills entire display area borderlessly
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Bulletproof UI Executor Injection Protection
+local targetParent = nil
+if gethui then
+    targetParent = gethui()
+else
+    local success, coregui = pcall(function() return game:GetService("CoreGui") end)
+    if success and coregui then
+        targetParent = coregui
+    else
+        targetParent = LocalPlayer:WaitForChild("PlayerGui", 10)
+    end
+end
+
+if not targetParent then return end
+ScreenGui.Parent = targetParent
+
+-- Main Fullscreen Background Frame (Using Standard Frame for Maximum Text Clarity)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(1, 0, 1, 0)
+MainFrame.Position = UDim2.new(0, 0, 0, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+-- Deep Velvet Red-to-Black Gradient Background
+local BackgroundGradient = Instance.new("UIGradient")
+BackgroundGradient.Rotation = 45 
+BackgroundGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(135, 4, 4)),   -- Intense Dark Crimson
+    ColorSequenceKeypoint.new(0.45, Color3.fromRGB(25, 2, 2)), -- Deep Maroon Transitions
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 6, 8))       -- True Onyx Black
+})
+BackgroundGradient.Parent = MainFrame
+
+-- Centered Typographic Display Unit
+local CenterText = Instance.new("TextLabel")
+CenterText.Name = "CenterText"
+CenterText.Size = UDim2.new(0.85, 0, 0.6, 0) -- Generous bounds for long sentences
+CenterText.AnchorPoint = Vector2.new(0.5, 0.5)
+CenterText.Position = UDim2.new(0.5, 0, 0.5, 0) 
+CenterText.BackgroundTransparency = 1
+CenterText.Text = ""
+CenterText.TextColor3 = Color3.fromRGB(255, 255, 255) -- Pure luminous white
+CenterText.Font = Enum.Font.GothamBold -- Clean, modern, high-visibility architecture
+CenterText.TextWrapped = true
+CenterText.TextSize = 30 -- Fixed clean sizing so text NEVER shrinks or chokes
+CenterText.TextTransparency = 1 -- Hidden by default
+CenterText.ZIndex = 2
+CenterText.Parent = MainFrame
+
+-- Thin High-Contrast Contrast Ring
+local TextStroke = Instance.new("UIStroke")
+TextStroke.Thickness = 1.5 -- Kept perfectly thin so it defines the letters without clumping
+TextStroke.Color = Color3.fromRGB(0, 0, 0)
+TextStroke.Transparency = 1
+TextStroke.Parent = CenterText
+
+-- Dynamic Outbound Transition Overlay Curtain
+local FadeOverlay = Instance.new("Frame")
+FadeOverlay.Name = "FadeOverlay"
+FadeOverlay.Size = UDim2.new(1, 0, 1, 0)
+FadeOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Solid black curtain
+FadeOverlay.BackgroundTransparency = 1 -- Completely invisible until the end
+FadeOverlay.BorderSizePixel = 0
+FadeOverlay.ZIndex = 5
+FadeOverlay.Parent = MainFrame
+
+-- Premium Easing Sequence Engine
+local function runTextSequence(message, displayDuration)
+    CenterText.Text = message
+    
+    -- Smooth Liquid Fade In (Cubic Easing Profile)
+    local fadeInText = TweenService:Create(CenterText, TweenInfo.new(0.7, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {TextTransparency = 0})
+    local fadeInStroke = TweenService:Create(TextStroke, TweenInfo.new(0.7, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {Transparency = 0.2})
+    fadeInText:Play()
+    fadeInStroke:Play()
+    
+    task.wait(displayDuration - 1.4) -- Calibrated presentation window
+    
+    -- Smooth Liquid Fade Out
+    local fadeOutText = TweenService:Create(CenterText, TweenInfo.new(0.7, Enum.EasingStyle.Cubic, Enum.EasingDirection.In), {TextTransparency = 1})
+    local fadeOutStroke = TweenService:Create(TextStroke, TweenInfo.new(0.7, Enum.EasingStyle.Cubic, Enum.EasingDirection.In), {Transparency = 1})
+    fadeOutText:Play()
+    fadeOutStroke:Play()
+    
+    task.wait(0.7)
+end
+
+-- Chronological Presentation Sequence Timeline Execution
+task.spawn(function()
+    -- Phase 1 (Start - 1/7 seconds)
+    task.wait(1.0)
+    runTextSequence("Hello, Thanks for Using Joy Hub.", 6.0)
+    
+    -- Phase 2 (8 - 11 seconds)
+    task.wait(1.0)
+    runTextSequence("We are not a Exploiting Hub, But a Hub that Brings Joy to People.", 3.0)
+    
+    -- Phase 3 (12 - 18 seconds)
+    task.wait(1.0)
+    runTextSequence("We are Keyless, and 0% Paid, But if you want to help us, you can do that by watching a linkvertise link, only if you enjoy our hub.", 6.0)
+    
+    -- Phase 4 (19 - 24 seconds)
+    task.wait(1.0)
+    runTextSequence("We Love to bring Joy to People and continue to do so, Because the Hub has alot of Mini-Games expect a Update/Bug Fixes a little Late, But join our Community Server to Know which Script is being Updated.", 5.0)
+    
+    -- Phase 5 (25 - 30 seconds)
+    task.wait(1.0)
+    runTextSequence("Thats it, Thanks for Seeing and Choosing us.", 5.0)
+    
+    -- Post 30-Second Mark Global Liquid Out-Fade Sequence
+    local globalOutTween = TweenService:Create(FadeOverlay, TweenInfo.new(1.5, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut), {BackgroundTransparency = 0})
+    globalOutTween:Play()
+    globalOutTween.Completed:Wait()
+    
+    -- Memory Cleanup Execution
+    ScreenGui:Destroy()
+end)
