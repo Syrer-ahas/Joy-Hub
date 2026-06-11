@@ -1,0 +1,572 @@
+-- 🎈 Balloon Cosmic Odyssey (White-Blue Glassware Edition)
+-- Compatible with Mobile & PC Executors
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+assert(LocalPlayer, "Player not found!")
+
+-- Core Screen GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BalloonCosmicJourneyUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Absolute Bulletproof UI Parenting for Executors
+local targetParent = nil
+if gethui then
+    targetParent = gethui()
+else
+    local success, coregui = pcall(function() return game:GetService("CoreGui") end)
+    if success and coregui then
+        targetParent = coregui
+    else
+        targetParent = LocalPlayer:WaitForChild("PlayerGui", 10)
+    end
+end
+
+if not targetParent then
+    error("Could not locate execution layer!")
+end
+ScreenGui.Parent = targetParent
+
+-- Main Window Frame (Sleek Translucent White-Blue Glass Theme)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -180)
+MainFrame.BackgroundColor3 = Color3.fromRGB(240, 246, 255) -- Whitish-Blue base
+MainFrame.BackgroundTransparency = 0.12 -- Slightly translucent lower transparency
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 14) -- Extra roundy corners
+MainCorner.Parent = MainFrame
+
+-- Neon Blue Outer Highlight Border
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2.5
+UIStroke.Color = Color3.fromRGB(120, 190, 255)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.LineJoinMode = Enum.LineJoinMode.Round
+UIStroke.Parent = MainFrame
+
+local BorderGradient = Instance.new("UIGradient")
+BorderGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 210, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 160, 255))
+})
+BorderGradient.Parent = UIStroke
+
+-- UIScale Component for Global Responsive Sizing
+local UiScale = Instance.new("UIScale")
+UiScale.Parent = MainFrame
+UiScale.Scale = 1.0
+
+-- Top Accent Bar Header
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 42)
+TopBar.BackgroundColor3 = Color3.fromRGB(215, 230, 250) -- Blended soft blue
+TopBar.BackgroundTransparency = 0.1
+TopBar.BorderSizePixel = 0
+TopBar.ZIndex = 5
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 14) -- Rounded top profile
+TopCorner.Parent = TopBar
+
+-- Title Label
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 320, 1, 0)
+Title.Position = UDim2.new(0, 16, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🎈 Balloon Dodger"
+Title.TextColor3 = Color3.fromRGB(45, 75, 110) -- Deep blue-gray text
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 5
+Title.Parent = TopBar
+
+local function createButton(name, text, pos, size, bg, parent)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = bg
+    btn.BackgroundTransparency = 0.15 -- Smooth lower transparency styling
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.ZIndex = 6
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8) -- Roundy utility buttons
+    corner.Parent = btn
+    return btn
+end
+
+local CloseBtn = createButton("CloseBtn", "X", UDim2.new(1, -36, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(235, 90, 90), TopBar)
+local PlusBtn = createButton("PlusBtn", "+", UDim2.new(1, -72, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(70, 150, 230), TopBar)
+local MinusBtn = createButton("MinusBtn", "-", UDim2.new(1, -108, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(90, 165, 235), TopBar)
+
+PlusBtn.MouseButton1Click:Connect(function() UiScale.Scale = math.clamp(UiScale.Scale + 0.1, 0.5, 2.2) end)
+MinusBtn.MouseButton1Click:Connect(function() UiScale.Scale = math.clamp(UiScale.Scale - 0.1, 0.5, 2.2) end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- Gameplay Viewport Frame Area
+local GameArea = Instance.new("Frame")
+GameArea.Name = "GameArea"
+GameArea.Size = UDim2.new(1, -20, 1, -64)
+GameArea.Position = UDim2.new(0, 10, 0, 52)
+GameArea.BackgroundColor3 = Color3.fromRGB(110, 195, 245) 
+GameArea.ClipsDescendants = true
+GameArea.Parent = MainFrame
+
+local GameCorner = Instance.new("UICorner")
+GameCorner.CornerRadius = UDim.new(0, 18) -- Extra roundy canvas windows
+GameCorner.Parent = GameArea
+
+-- Background Celestial Planet Label
+local CelestialObject = Instance.new("TextLabel")
+CelestialObject.Name = "CelestialObject"
+CelestialObject.Size = UDim2.new(0, 100, 0, 100)
+CelestialObject.Position = UDim2.new(0.5, -50, -0.4, 0) 
+CelestialObject.BackgroundTransparency = 1
+CelestialObject.Text = ""
+CelestialObject.TextSize = 75
+CelestialObject.ZIndex = 1
+CelestialObject.Parent = GameArea
+
+-- Telemetry Labels
+local ScoreLabel = Instance.new("TextLabel")
+ScoreLabel.Size = UDim2.new(1, -20, 0, 30)
+ScoreLabel.Position = UDim2.new(0, 12, 0, 6)
+ScoreLabel.BackgroundTransparency = 1
+ScoreLabel.Text = "Distance: 0m (1.000x)"
+ScoreLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScoreLabel.TextSize = 15
+ScoreLabel.Font = Enum.Font.GothamBold
+ScoreLabel.TextXAlignment = Enum.TextXAlignment.Left
+ScoreLabel.ZIndex = 4
+ScoreLabel.Parent = GameArea
+
+local AlertLabel = Instance.new("TextLabel")
+AlertLabel.Size = UDim2.new(1, -20, 0, 30)
+AlertLabel.Position = UDim2.new(0, 12, 0, 6)
+AlertLabel.BackgroundTransparency = 1
+AlertLabel.Text = ""
+AlertLabel.TextColor3 = Color3.fromRGB(255, 235, 60)
+AlertLabel.TextSize = 14
+AlertLabel.Font = Enum.Font.GothamBold
+AlertLabel.TextXAlignment = Enum.TextXAlignment.Right
+AlertLabel.ZIndex = 4
+AlertLabel.Parent = GameArea
+
+-- The Balloon Character (Initial Spawn Locked to Right Side)
+local Balloon = Instance.new("TextLabel")
+Balloon.Name = "Balloon"
+Balloon.Size = UDim2.new(0, 32, 0, 32)
+Balloon.Position = UDim2.new(0.85, -16, 0.8, 0) 
+Balloon.BackgroundTransparency = 1
+Balloon.Text = "🎈"
+Balloon.TextSize = 28
+Balloon.ZIndex = 3
+Balloon.Parent = GameArea
+
+-- Protective Plasma Shield Aura Layer
+local ShieldBubble = Instance.new("Frame")
+ShieldBubble.Name = "ShieldBubble"
+ShieldBubble.Size = UDim2.new(1.6, 0, 1.6, 0)
+ShieldBubble.Position = UDim2.new(-0.3, 0, -0.3, 0)
+ShieldBubble.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+ShieldBubble.BackgroundTransparency = 1 
+ShieldBubble.ZIndex = 2
+ShieldBubble.Parent = Balloon
+
+local ShieldCorner = Instance.new("UICorner")
+ShieldCorner.CornerRadius = UDim.new(1, 0) 
+ShieldCorner.Parent = ShieldBubble
+
+local ShieldStroke = Instance.new("UIStroke")
+ShieldStroke.Thickness = 2.5
+ShieldStroke.Color = Color3.fromRGB(255, 255, 255)
+ShieldStroke.Transparency = 1
+ShieldStroke.Parent = ShieldBubble
+
+-- Mobile Control Buttons
+local LeftSteerBtn = Instance.new("TextButton")
+LeftSteerBtn.Size = UDim2.new(0, 55, 0, 55)
+LeftSteerBtn.Position = UDim2.new(0, 12, 1, -67)
+LeftSteerBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+LeftSteerBtn.BackgroundTransparency = 0.65
+LeftSteerBtn.Text = "◀"
+LeftSteerBtn.TextColor3 = Color3.fromRGB(40, 45, 55)
+LeftSteerBtn.TextSize = 20
+LeftSteerBtn.Font = Enum.Font.GothamBold
+LeftSteerBtn.ZIndex = 4
+LeftSteerBtn.Parent = GameArea
+Instance.new("UICorner").Parent = LeftSteerBtn
+
+local RightSteerBtn = Instance.new("TextButton")
+RightSteerBtn.Size = UDim2.new(0, 55, 0, 55)
+RightSteerBtn.Position = UDim2.new(1, -67, 1, -67)
+RightSteerBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+RightSteerBtn.BackgroundTransparency = 0.65
+RightSteerBtn.Text = "▶"
+RightSteerBtn.TextColor3 = Color3.fromRGB(40, 45, 55)
+RightSteerBtn.TextSize = 20
+RightSteerBtn.Font = Enum.Font.GothamBold
+RightSteerBtn.ZIndex = 4
+RightSteerBtn.Parent = GameArea
+Instance.new("UICorner").Parent = RightSteerBtn
+
+-- Game System States
+local gameActive = true
+local currentScore = 0
+local timeElapsed = 0
+local baseSteeringSpeed = 320 
+
+local moveLeftActive = false
+local moveRightActive = false
+
+-- Shield Configuration Matrix
+local shieldActive = false
+local shieldTimeLeft = 0
+local shieldPickupCooldown = 0 -- 2 Second Collection buffer tracker
+
+local inSpace = false
+local currentActivePlanet = nil
+
+local activeHazards = {}
+local activeClouds = {}
+local itemSpawnCountdown = 0.6
+
+-- Inputs Processing Setup Map
+LeftSteerBtn.MouseButton1Down:Connect(function() moveLeftActive = true end)
+LeftSteerBtn.MouseButton1Up:Connect(function() moveLeftActive = false end)
+LeftSteerBtn.MouseLeave:Connect(function() moveLeftActive = false end)
+
+RightSteerBtn.MouseButton1Down:Connect(function() moveRightActive = true end)
+RightSteerBtn.MouseButton1Up:Connect(function() moveRightActive = false end)
+RightSteerBtn.MouseLeave:Connect(function() moveRightActive = false end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.Left then
+        moveLeftActive = true
+    elseif input.KeyCode == Enum.KeyCode.D or input.KeyCode == Enum.KeyCode.Right then
+        moveRightActive = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.Left then
+        moveLeftActive = false
+    elseif input.KeyCode == Enum.KeyCode.D or input.KeyCode == Enum.KeyCode.Right then
+        moveRightActive = false
+    end
+end)
+
+local function generateSkyElement(isInitialLayout, optionalY)
+    local element = Instance.new("TextLabel")
+    element.BackgroundTransparency = 1
+    element.Text = inSpace and "✨" or "☁️"
+    element.TextSize = inSpace and math.random(14, 24) or math.random(35, 55)
+    element.TextTransparency = inSpace and 0.2 or 0.5
+    element.Size = UDim2.new(0, 40, 0, 30)
+    element.Position = UDim2.new(math.random(5, 95)/100, 0, isInitialLayout and optionalY or -0.15, 0)
+    element.ZIndex = 1
+    element.Parent = GameArea
+    table.insert(activeClouds, element)
+end
+
+for i = 1, 4 do generateSkyElement(true, (i - 1) * 0.25) end
+
+local function evaluateCollision(box1, box2)
+    local p1, s1 = box1.AbsolutePosition, box1.AbsoluteSize
+    local p2, s2 = box2.AbsolutePosition, box2.AbsoluteSize
+    return p1.X + 4 < p2.X + s2.X - 4 and
+           p1.X + s1.X - 4 > p2.X + 4 and
+           p1.Y + 4 < p2.Y + s2.Y - 4 and
+           p1.Y + s1.Y - 4 > p2.Y + 4
+end
+
+local function runGameResetPipeline()
+    for _, item in ipairs(activeHazards) do item:Destroy() end
+    activeHazards = {}
+    
+    currentScore = 0
+    timeElapsed = 0
+    inSpace = false
+    currentActivePlanet = nil
+    shieldActive = false
+    shieldTimeLeft = 0
+    shieldPickupCooldown = 0
+    
+    ShieldBubble.Size = UDim2.new(1.6, 0, 1.6, 0)
+    ShieldBubble.Position = UDim2.new(-0.3, 0, -0.3, 0)
+    ShieldBubble.BackgroundTransparency = 1
+    ShieldStroke.Transparency = 1
+    GameArea.BackgroundColor3 = Color3.fromRGB(110, 195, 245)
+    GameArea.Position = UDim2.new(0, 10, 0, 52)
+    CelestialObject.Position = UDim2.new(0.5, -50, -0.4, 0)
+    CelestialObject.Text = ""
+    
+    Balloon.Text = "🎈"
+    Balloon.Position = UDim2.new(0.85, -16, 0.8, 0) 
+    itemSpawnCountdown = 0.6
+    AlertLabel.Text = ""
+    moveLeftActive = false
+    moveRightActive = false
+    gameActive = true
+end
+
+local function handleTerminalCrash()
+    gameActive = false
+    GameArea.Position = UDim2.new(0, 10, 0, 52)
+    AlertLabel.Text = "💥 POPPED! Tap Sky to Restart..."
+    task.wait(0.4)
+    
+    local rebootTrigger
+    rebootTrigger = GameArea.InputBegan:Connect(function(clickInput)
+        if clickInput.UserInputType == Enum.UserInputType.MouseButton1 or clickInput.UserInputType == Enum.UserInputType.Touch then
+            rebootTrigger:Disconnect()
+            runGameResetPipeline()
+        end
+    end)
+end
+
+-- Primary RunLoop Connect Channel
+local runLoopConnection
+runLoopConnection = RunService.Heartbeat:Connect(function(deltaTime)
+    if not ScreenGui or not ScreenGui.Parent then
+        runLoopConnection:Disconnect()
+        return
+    end
+    
+    BorderGradient.Rotation = (BorderGradient.Rotation + (deltaTime * 100)) % 360
+    
+    if not gameActive then return end
+    
+    -- PROGRESSIVE SPEED INTERVAL SCALE: +0.009x per second
+    timeElapsed = timeElapsed + deltaTime
+    local speedMultiplier = 1.0 + (timeElapsed * 0.009)
+    
+    currentScore = currentScore + (deltaTime * 32 * speedMultiplier)
+    local distance = math.floor(currentScore)
+    ScoreLabel.Text = string.format("Distance: %dm (%.3fx Speed)", distance, speedMultiplier)
+    
+    -- Tick Internal Shield Collection Cooldown Buffers
+    if shieldPickupCooldown > 0 then
+        shieldPickupCooldown = shieldPickupCooldown - deltaTime
+    end
+    
+    -- Dynamic Shield Engine
+    if shieldActive then
+        shieldTimeLeft = shieldTimeLeft - deltaTime
+        
+        if shieldPickupCooldown > 0 then
+            AlertLabel.Text = string.format("🛡️ CAP: %.1fs (🔒 COOLDOWN)", shieldTimeLeft)
+        else
+            AlertLabel.Text = string.format("🛡️ SHIELD STACK: %.1fs", shieldTimeLeft)
+        end
+        
+        -- Shrink/Grow shield visual ring profile dynamically based on stack depth remaining
+        local dynamicSizeScale = 1.6 + math.min(shieldTimeLeft * 0.08, 1.4)
+        local halfScaleAdjustment = (dynamicSizeScale - 1) / 2
+        ShieldBubble.Size = UDim2.new(dynamicSizeScale, 0, dynamicSizeScale, 0)
+        ShieldBubble.Position = UDim2.new(-halfScaleAdjustment, 0, -halfScaleAdjustment, 0)
+        
+        if shieldTimeLeft <= 0 then
+            shieldActive = false
+            AlertLabel.Text = ""
+            TweenService:Create(ShieldBubble, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(ShieldStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+        end
+    end
+    
+    -- INTENSE PRE-END SOLAR SCREEN SHAKE ENGINE
+    -- Begins at 7,500 meters and scales violently up to 12px offsets at the Sun's core
+    if distance >= 7500 and distance < 10000 then
+        local normalizationFactor = (distance - 7500) / 2500
+        local intenseShakeForce = normalizationFactor * 13 -- Up to 13-pixel visual frame displacements
+        GameArea.Position = UDim2.new(0, 10 + math.random(-intenseShakeForce, intenseShakeForce), 0, 52 + math.random(-intenseShakeForce, intenseShakeForce))
+    elseif speedMultiplier > 1.6 and distance < 7500 then
+        -- Standard velocity-induced vibrations
+        local minorShake = math.min((speedMultiplier - 1.6) * 1.5, 2.5)
+        GameArea.Position = UDim2.new(0, 10 + math.random(-minorShake, minorShake), 0, 52 + math.random(-minorShake, minorShake))
+    else
+        GameArea.Position = UDim2.new(0, 10, 0, 52)
+    end
+    
+    -- Space Milestones Timeline Channels
+    if distance >= 10000 then
+        gameActive = false
+        Balloon.Text = "💥"
+        CelestialObject.Text = "☀️"
+        CelestialObject.Position = UDim2.new(0.5, -50, 0.3, 0)
+        GameArea.Position = UDim2.new(0, 10, 0, 52)
+        AlertLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        AlertLabel.Text = "🎉 VICTORY! YOU REACHED THE SUN!"
+        return
+    elseif distance >= 5000 then
+        if currentActivePlanet ~= "Venus" then
+            currentActivePlanet = "Venus"
+            CelestialObject.Text = "🟠"
+            CelestialObject.Position = UDim2.new(0.5, -50, -0.4, 0)
+            TweenService:Create(CelestialObject, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -50, 0.15, 0)}):Play()
+        end
+    elseif distance >= 3000 then
+        if currentActivePlanet ~= "Mars" then
+            currentActivePlanet = "Mars"
+            CelestialObject.Text = "🔴"
+            CelestialObject.Position = UDim2.new(0.5, -50, -0.4, 0)
+            TweenService:Create(CelestialObject, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -50, 0.15, 0)}):Play()
+        end
+    elseif distance >= 2000 then
+        if currentActivePlanet ~= "Moon" then
+            currentActivePlanet = "Moon"
+            CelestialObject.Text = "🌕"
+            CelestialObject.Position = UDim2.new(0.5, -50, -0.4, 0)
+            TweenService:Create(CelestialObject, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -50, 0.15, 0)}):Play()
+        end
+    elseif distance >= 1000 then
+        if not inSpace then
+            inSpace = true
+            TweenService:Create(GameArea, TweenInfo.new(3), {BackgroundColor3 = Color3.fromRGB(12, 12, 24)}):Play()
+        end
+        if distance >= 2800 and currentActivePlanet == "Moon" then
+            CelestialObject.Position = CelestialObject.Position + UDim2.new(0, 0, 0, 40 * deltaTime)
+        elseif distance >= 4800 and currentActivePlanet == "Mars" then
+            CelestialObject.Position = CelestialObject.Position + UDim2.new(0, 0, 0, 40 * deltaTime)
+        elseif distance >= 9500 and currentActivePlanet == "Venus" then
+            CelestialObject.Position = CelestialObject.Position + UDim2.new(0, 0, 0, 40 * deltaTime)
+        end
+    end
+    
+    -- Processing Vector Horizontal Steering
+    local horizontalMovementOffset = 0
+    if moveLeftActive then
+        horizontalMovementOffset = -baseSteeringSpeed * speedMultiplier * deltaTime
+    elseif moveRightActive then
+        horizontalMovementOffset = baseSteeringSpeed * speedMultiplier * deltaTime
+    end
+    
+    if horizontalMovementOffset ~= 0 then
+        local targetXOffset = Balloon.Position.X.Offset + horizontalMovementOffset
+        local maxWidthLimit = GameArea.AbsoluteSize.X - Balloon.AbsoluteSize.X
+        targetXOffset = math.clamp(targetXOffset, 0, maxWidthLimit)
+        Balloon.Position = UDim2.new(0, targetXOffset, Balloon.Position.Y.Scale, Balloon.Position.Y.Offset)
+    end
+    
+    -- Background Environment Engine Parallax Update
+    local currentScrollSpeed = (inSpace and 45 or 75) * speedMultiplier
+    for idx = #activeClouds, 1, -1 do
+        local element = activeClouds[idx]
+        if element and element.Parent then
+            element.Position = element.Position + UDim2.new(0, 0, 0, currentScrollSpeed * deltaTime)
+            if element.AbsolutePosition.Y > GameArea.AbsolutePosition.Y + GameArea.AbsoluteSize.Y then
+                element:Destroy()
+                table.remove(activeClouds, idx)
+                generateSkyElement(false)
+            end
+        end
+    end
+    
+    -- Threat Deployment System
+    itemSpawnCountdown = itemSpawnCountdown - deltaTime
+    if itemSpawnCountdown <= 0 then
+        local spawnedItem = Instance.new("TextLabel")
+        spawnedItem.TextSize = 22
+        spawnedItem.Size = UDim2.new(0, 36, 0, 36) 
+        spawnedItem.TextXAlignment = Enum.TextXAlignment.Center
+        spawnedItem.TextYAlignment = Enum.TextYAlignment.Center
+        
+        local itemCorner = Instance.new("UICorner")
+        itemCorner.CornerRadius = UDim.new(1, 0)
+        itemCorner.Parent = spawnedItem
+        
+        local itemStroke = Instance.new("UIStroke")
+        itemStroke.Thickness = 3.2
+        itemStroke.Parent = spawnedItem
+        
+        local itemRoll = math.random()
+        if itemRoll <= 0.15 then
+            -- 🛡️ Shield Power-Up (Cyan Disk Aura)
+            spawnedItem.Name = "ShieldPowerUp"
+            spawnedItem.Text = "🛡️"
+            spawnedItem.BackgroundColor3 = Color3.fromRGB(0, 90, 220)
+            spawnedItem.BackgroundTransparency = 0.65
+            itemStroke.Color = Color3.fromRGB(0, 255, 255) 
+        else
+            -- 🛑 Obstacles (Neon Red Threat Indicators)
+            spawnedItem.Name = "Obstacle"
+            spawnedItem.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+            spawnedItem.BackgroundTransparency = 0.55 
+            itemStroke.Color = Color3.fromRGB(255, 0, 0) 
+            
+            local spaceObstacles = {"☄️", "⚡", "💣", "🛸", "🔥"}
+            local skyObstacles = {"🦅", "⚡", "⛈️", "💣", "🔥"}
+            spawnedItem.Text = inSpace and spaceObstacles[math.random(1, #spaceObstacles)] or skyObstacles[math.random(1, #skyObstacles)]
+        end
+        
+        local canvasWidth = GameArea.AbsoluteSize.X
+        if canvasWidth == 0 then canvasWidth = 530 end
+        spawnedItem.Position = UDim2.new(0, math.random(10, canvasWidth - 46), 0, -40)
+        spawnedItem.ZIndex = 3
+        spawnedItem.Parent = GameArea
+        
+        table.insert(activeHazards, spawnedItem)
+        itemSpawnCountdown = math.clamp(0.58 / speedMultiplier, 0.18, 0.58)
+    end
+    
+    -- Processing Falling Physics & Matrix Hits
+    local fallingSpeed = 190 * speedMultiplier
+    for idx = #activeHazards, 1, -1 do
+        local currentItem = activeHazards[idx]
+        if currentItem and currentItem.Parent then
+            currentItem.Position = currentItem.Position + UDim2.new(0, 0, 0, fallingSpeed * deltaTime)
+            
+            if evaluateCollision(Balloon, currentItem) then
+                if currentItem.Name == "ShieldPowerUp" then
+                    -- Process shield pickup if off collection cooldown
+                    if shieldPickupCooldown <= 0 then
+                        shieldActive = true
+                        -- STACK CAP: Increase duration by +5s, strict math clamp ceiling at 12 seconds
+                        shieldTimeLeft = math.min(shieldTimeLeft + 5.0, 12.0)
+                        shieldPickupCooldown = 2.0 -- Trigger 2-second collection cooldown lock
+                        
+                        TweenService:Create(ShieldBubble, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
+                        TweenService:Create(ShieldStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
+                    end
+                    currentItem:Destroy()
+                    table.remove(activeHazards, idx)
+                else
+                    if not shieldActive then
+                        handleTerminalCrash()
+                        return
+                    else
+                        currentItem:Destroy()
+                        table.remove(activeHazards, idx)
+                    end
+                end
+            elseif currentItem.AbsolutePosition.Y > GameArea.AbsolutePosition.Y + GameArea.AbsoluteSize.Y then
+                currentItem:Destroy()
+                table.remove(activeHazards, idx)
+            end
+        end
+    end
+end)
