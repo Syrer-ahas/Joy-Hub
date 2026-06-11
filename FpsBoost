@@ -1,0 +1,432 @@
+-- 🚀 Advanced Cyber Performance Optimizer & Floating FPS Telemetry
+-- Compatible with Mobile & PC Executors
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+assert(LocalPlayer, "Player not found!")
+
+-- Core Screen GUI Setup Channels
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CyberFPSBoosterUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local targetParent = nil
+if gethui then
+    targetParent = gethui()
+else
+    local success, coregui = pcall(function() return game:GetService("CoreGui") end)
+    if success and coregui then
+        targetParent = coregui
+    else
+        targetParent = LocalPlayer:WaitForChild("PlayerGui", 10)
+    end
+end
+ScreenGui.Parent = targetParent
+
+--------------------------------------------------------------------------------
+-- 🎨 FRONT-END CONTROL UI SYSTEM
+--------------------------------------------------------------------------------
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 360, 0, 240)
+MainFrame.Position = UDim2.new(0.5, -180, 0.4, -120)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 24, 46) -- Electric Cyber Blue
+MainFrame.BackgroundTransparency = 0.15
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 14)
+MainCorner.Parent = MainFrame
+
+-- Fully Animated Neon Border Profile
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2.5
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.LineJoinMode = Enum.LineJoinMode.Round
+UIStroke.Parent = MainFrame
+
+local BorderGradient = Instance.new("UIGradient")
+BorderGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 210)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 255))
+})
+BorderGradient.Parent = MainFrame:WaitForChild("UIStroke")
+
+-- Layout Container
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Name = "ContentContainer"
+ContentContainer.Size = UDim2.new(1, 0, 1, 0)
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Parent = MainFrame
+
+local HeaderTitle = Instance.new("TextLabel")
+HeaderTitle.Size = UDim2.new(1, -60, 0, 40)
+HeaderTitle.Position = UDim2.new(0, 16, 0, 4)
+HeaderTitle.BackgroundTransparency = 1
+HeaderTitle.Text = "⚡ FPS BOOST"
+HeaderTitle.TextColor3 = Color3.fromRGB(0, 230, 255)
+HeaderTitle.TextSize = 14
+HeaderTitle.Font = Enum.Font.GothamBold
+HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
+HeaderTitle.Parent = ContentContainer
+
+-- Minimize/Maximize Activation Dot Utility Button
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Name = "MinimizeBtn"
+MinimizeBtn.Size = UDim2.new(0, 24, 0, 24)
+MinimizeBtn.Position = UDim2.new(1, -34, 0, 12)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+MinimizeBtn.BackgroundTransparency = 0.2
+MinimizeBtn.Text = "−"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 16
+MinimizeBtn.BorderSizePixel = 0
+MinimizeBtn.ZIndex = 10
+MinimizeBtn.Parent = MainFrame
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 6)
+MinCorner.Parent = MinimizeBtn
+
+local function buildControlBtn(name, label, position, color)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(1, -32, 0, 42)
+    btn.Position = position
+    btn.BackgroundColor3 = color
+    btn.BackgroundTransparency = 0.25
+    btn.Text = label
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    btn.BorderSizePixel = 0
+    btn.Parent = ContentContainer
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 10)
+    btnCorner.Parent = btn
+    
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Thickness = 1.2
+    btnStroke.Color = color:Lerp(Color3.new(1,1,1), 0.3)
+    btnStroke.Parent = btn
+    
+    return btn
+end
+
+local ExtremeBtn = buildControlBtn("ExtremeBtn", "EXTREME BOOST ON", UDim2.new(0, 16, 0, 52), Color3.fromRGB(255, 45, 90))
+local MediumBtn = buildControlBtn("MediumBtn", "MEDIUM BOOST ON", UDim2.new(0, 16, 0, 106), Color3.fromRGB(255, 160, 0))
+local DisableBtn = buildControlBtn("DisableBtn", "TURN OFF ALL BOOSTS", UDim2.new(0, 16, 0, 160), Color3.fromRGB(0, 180, 120))
+
+--------------------------------------------------------------------------------
+-- 📊 INDEPENDENT FLOATING DECIMAL FPS DISPLAY SYSTEM
+--------------------------------------------------------------------------------
+
+local FpsGui = Instance.new("ScreenGui")
+FpsGui.Name = "FloatingTelemetryFPS"
+FpsGui.ResetOnSpawn = false
+FpsGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+FpsGui.Parent = targetParent
+
+local FpsLabel = Instance.new("TextLabel")
+FpsLabel.Name = "FpsLabel"
+FpsLabel.Size = UDim2.new(0, 140, 0, 30)
+FpsLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+FpsLabel.BackgroundTransparency = 1  
+FpsLabel.BorderSizePixel = 0
+FpsLabel.Text = "0.00 FPS"
+FpsLabel.TextColor3 = Color3.fromRGB(0, 255, 180) 
+FpsLabel.TextSize = 16
+FpsLabel.Font = Enum.Font.Code 
+FpsLabel.TextXAlignment = Enum.TextXAlignment.Left
+FpsLabel.Active = true
+FpsLabel.Parent = FpsGui
+
+--------------------------------------------------------------------------------
+-- 🔄 SMOOTH DRAG INTEGRATION MACHINE (MANUAL DELTA CALCULATIONS)
+--------------------------------------------------------------------------------
+
+local dragToggle = false
+local dragStart = nil
+local startPos = nil
+
+local function updateDragInput(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+local function initiateDragSequence(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragToggle = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragToggle = false
+            end
+        end)
+    end
+end
+
+MainFrame.InputBegan:Connect(initiateDragSequence)
+MinimizeBtn.InputBegan:Connect(initiateDragSequence) -- Allows drag handling from minimized dot button frame directly
+
+UserInputService.InputChanged:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
+        updateDragInput(input)
+    end
+end)
+
+local dragToggleFPS = false
+local dragStartFPS = nil
+local startPosFPS = nil
+
+FpsLabel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragToggleFPS = true
+        dragStartFPS = input.Position
+        startPosFPS = FpsLabel.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragToggleFPS = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggleFPS then
+        local delta = input.Position - dragStartFPS
+        FpsLabel.Position = UDim2.new(startPosFPS.X.Scale, startPosFPS.X.Offset + delta.X, startPosFPS.Y.Scale, startPosFPS.Y.Offset + delta.Y)
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- ⚙️ BACK-END OPTIMIZATION CORE ENGINE
+--------------------------------------------------------------------------------
+
+local activeBoostMode = "None" 
+local assetStateCache = {}
+local listenerConnection = nil
+
+local function backupAndModifyProperty(instance, property, optimizationValue)
+    if not assetStateCache[instance] then
+        assetStateCache[instance] = {}
+    end
+    if assetStateCache[instance][property] == nil then
+        local success, originalValue = pcall(function() return instance[property] end)
+        if success then
+            assetStateCache[instance][property] = originalValue
+        else
+            assetStateCache[instance][property] = nil
+        end
+    end
+    pcall(function() instance[property] = optimizationValue end)
+end
+
+local function applyTargetOptimizations(object)
+    if activeBoostMode == "None" then return end
+    
+    -- Absolute ImageId Decal & Texture Purging Channel
+    if object:IsA("Decal") or object:IsA("Texture") then
+        if activeBoostMode == "Medium" or activeBoostMode == "Extreme" then
+            backupAndModifyProperty(object, "Texture", "")
+        end
+    end
+    
+    -- Optimize Mesh & Block Materials + Turn Off Shadows
+    if object:IsA("BasePart") or object:IsA("MeshPart") then
+        if activeBoostMode == "Medium" or activeBoostMode == "Extreme" then
+            backupAndModifyProperty(object, "Material", Enum.Material.SmoothPlastic)
+        end
+        if activeBoostMode == "Extreme" then
+            backupAndModifyProperty(object, "CastShadow", false)
+        end
+    end
+    
+    -- Optimize Physical Rendering Light Sources (Eliminates Light Rendering Overheads)
+    if object:IsA("Light") then -- Catches PointLight, SpotLight, SurfaceLight
+        if activeBoostMode == "Medium" or activeBoostMode == "Extreme" then
+            backupAndModifyProperty(object, "Enabled", false)
+        end
+    end
+    
+    -- Strip Severe Performance Bloat (Particles, Apparel Rendering, Skybox Shaders, UGC Items)
+    if activeBoostMode == "Extreme" then
+        if object:IsA("ParticleEmitter") or object:IsA("Trail") or object:IsA("Beam") or object:IsA("Fire") or object:IsA("Smoke") then
+            backupAndModifyProperty(object, "Enabled", false)
+        end
+        -- Remove Player Clothing Assets
+        if object:IsA("Shirt") or object:IsA("Pants") or object:IsA("GraphicShirt") or object:IsA("ShirtGraphic") or object:IsA("CharacterMesh") then
+            backupAndModifyProperty(object, "Parent", nil) 
+        end
+        -- Clear UGC Accessories / Hats completely
+        if object:IsA("Accessory") or object:IsA("Hat") then
+            backupAndModifyProperty(object, "Parent", nil)
+        end
+    end
+end
+
+local function processWorldPurgePipeline(targetMode)
+    activeBoostMode = targetMode
+    
+    -- Apply Engine Adjustments inside Lighting Layer Profiles
+    if targetMode == "Medium" or targetMode == "Extreme" then
+        backupAndModifyProperty(Lighting, "GlobalShadows", false)
+    end
+    
+    if targetMode == "Extreme" then
+        backupAndModifyProperty(Lighting, "EnvironmentSpecularScale", 0)
+        backupAndModifyProperty(Lighting, "EnvironmentDiffuseScale", 0)
+        for _, postEffect in ipairs(Lighting:GetChildren()) do
+            if postEffect:IsA("PostEffect") or postEffect:IsA("Atmosphere") or postEffect:IsA("Clouds") or postEffect:IsA("Sky") then
+                backupAndModifyProperty(postEffect, "Enabled", false)
+                -- Wipe out Skybox Image Asset links specifically
+                if postEffect:IsA("Sky") then
+                    backupAndModifyProperty(postEffect, "SkyboxBk", "")
+                    backupAndModifyProperty(postEffect, "SkyboxDn", "")
+                    backupAndModifyProperty(postEffect, "SkyboxFt", "")
+                    backupAndModifyProperty(postEffect, "SkyboxLf", "")
+                    backupAndModifyProperty(postEffect, "SkyboxRt", "")
+                    backupAndModifyProperty(postEffect, "SkyboxUp", "")
+                end
+            end
+        end
+        pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+    end
+    
+    -- Execute Linear Sweep Over Current Game Workspace Assets
+    for _, descendant in ipairs(workspace:GetDescendants()) do
+        applyTargetOptimizations(descendant)
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            for _, item in ipairs(player.Character:GetDescendants()) do
+                applyTargetOptimizations(item)
+            end
+        end
+    end
+    
+    -- Open dynamic background indexing capture channels
+    if not listenerConnection then
+        listenerConnection = workspace.DescendantAdded:Connect(function(newDescendant)
+            task.next(function()
+                applyTargetOptimizations(newDescendant)
+            end)
+        end)
+    end
+end
+
+local function safelyRestoreOriginalStates()
+    if listenerConnection then
+        listenerConnection:Disconnect()
+        listenerConnection = nil
+    end
+    
+    activeBoostMode = "None"
+    
+    -- Revert objects back to cached states
+    for object, properties in pairs(assetStateCache) do
+        if object then
+            for propertyName, originalValue in pairs(properties) do
+                pcall(function()
+                    object[propertyName] = originalValue
+                end)
+            end
+        end
+    end
+    
+    assetStateCache = {}
+    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic end)
+end
+
+--------------------------------------------------------------------------------
+-- 🎛️ BUTTON CONNECTORS & INTERACTION HANDLERS
+--------------------------------------------------------------------------------
+
+ExtremeBtn.MouseButton1Click:Connect(function()
+    safelyRestoreOriginalStates()
+    processWorldPurgePipeline("Extreme")
+    HeaderTitle.Text = "⚡ BOOSTER: EXTREME ACTIVE"
+end)
+
+MediumBtn.MouseButton1Click:Connect(function()
+    safelyRestoreOriginalStates()
+    processWorldPurgePipeline("Medium")
+    HeaderTitle.Text = "⚡ BOOSTER: MEDIUM ACTIVE"
+end)
+
+DisableBtn.MouseButton1Click:Connect(function()
+    safelyRestoreOriginalStates()
+    HeaderTitle.Text = "⚡ SYSTEM OPTIMIZER"
+end)
+
+-- Window Minimization / Maximization Toggle Controller
+local isMinimized = false
+local regularWindowSize = MainFrame.Size
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        ContentContainer.Visible = false
+        MinimizeBtn.Text = "+"
+        MinimizeBtn.Size = UDim2.new(1, 0, 1, 0)
+        MinimizeBtn.Position = UDim2.new(0, 0, 0, 0)
+        MainCorner.CornerRadius = UDim.new(1, 0) -- Morph main frame container outline into a round dot 
+        MinCorner.CornerRadius = UDim.new(1, 0)
+        MainFrame.Size = UDim2.new(0, 28, 0, 28)
+    else
+        MainFrame.Size = regularWindowSize
+        MainCorner.CornerRadius = UDim.new(0, 14)
+        MinCorner.CornerRadius = UDim.new(0, 6)
+        MinimizeBtn.Text = "−"
+        MinimizeBtn.Size = UDim2.new(0, 24, 0, 24)
+        MinimizeBtn.Position = UDim2.new(1, -34, 0, 12)
+        ContentContainer.Visible = true
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- ⏱️ RUNTIME PERFORMANCE UPDATER & GRADIENT TICK CHANNELS
+--------------------------------------------------------------------------------
+
+local frameCountAccumulator = 0
+local timeDurationAccumulator = 0
+
+local runLoopConnection
+runLoopConnection = RunService.Heartbeat:Connect(function(deltaTime)
+    if not ScreenGui or not ScreenGui.Parent or not FpsGui or not FpsGui.Parent then
+        if listenerConnection then listenerConnection:Disconnect() end
+        runLoopConnection:Disconnect()
+        return
+    end
+    
+    -- Animate Core Outer High-Vis Neon Borders
+    BorderGradient.Rotation = (BorderGradient.Rotation + (deltaTime * 100)) % 360
+    
+    -- Performance Metrics Logic Tracker Profiles
+    frameCountAccumulator = frameCountAccumulator + 1
+    timeDurationAccumulator = timeDurationAccumulator + deltaTime
+    
+    -- Update telemetry exactly every 0.25 Second Interval Step
+    if timeDurationAccumulator >= 0.25 then
+        local calculatedFpsDecimal = frameCountAccumulator / timeDurationAccumulator
+        FpsLabel.Text = string.format("%.2f FPS", calculatedFpsDecimal)
+        
+        frameCountAccumulator = 0
+        timeDurationAccumulator = 0
+    end
+end)
