@@ -1,0 +1,430 @@
+-- 🎯 "Shooter" FPS Reflex Minigame (Electric Cyan-Blue Cyber Edition)
+-- Compatible with Mobile & PC Executors
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+assert(LocalPlayer, "Player not found!")
+
+-- Core Screen GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ShooterFPSMinigameUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Absolute Bulletproof UI Parenting for Executors
+local targetParent = nil
+if gethui then
+    targetParent = gethui()
+else
+    local success, coregui = pcall(function() return game:GetService("CoreGui") end)
+    if success and coregui then
+        targetParent = coregui
+    else
+        targetParent = LocalPlayer:WaitForChild("PlayerGui", 10)
+    end
+end
+
+if not targetParent then
+    error("Could not locate execution layer!")
+end
+ScreenGui.Parent = targetParent
+
+-- Main Window Frame (Electric Cyan-Blue Glass Aesthetic)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 28, 52) -- Rich cyber blue base
+MainFrame.BackgroundTransparency = 0.15 -- Translucent glass effect
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 14) -- Extra roundy corners
+MainCorner.Parent = MainFrame
+
+-- Fully Animated Neon Outer Border
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 3.0
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.LineJoinMode = Enum.LineJoinMode.Round
+UIStroke.Parent = MainFrame
+
+local BorderGradient = Instance.new("UIGradient")
+BorderGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 180, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 220)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 255))
+})
+BorderGradient.Parent = UIStroke
+
+-- UIScale Component for Global Responsive Sizing
+local UiScale = Instance.new("UIScale")
+UiScale.Parent = MainFrame
+UiScale.Scale = 1.0
+
+-- Top Accent Bar Header
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 42)
+TopBar.BackgroundColor3 = Color3.fromRGB(16, 44, 82) -- Deep cyber-blue header
+TopBar.BackgroundTransparency = 0.2
+TopBar.BorderSizePixel = 0
+TopBar.ZIndex = 5
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 14) 
+TopCorner.Parent = TopBar
+
+-- Title Label
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 320, 1, 0)
+Title.Position = UDim2.new(0, 16, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🎯 Shooter Arena"
+Title.TextColor3 = Color3.fromRGB(0, 230, 255) -- Vivid cyan text
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 5
+Title.Parent = TopBar
+
+local function createButton(name, text, pos, size, bg, parent)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = bg
+    btn.BackgroundTransparency = 0.2
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.ZIndex = 6
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8) 
+    corner.Parent = btn
+    return btn
+end
+
+local CloseBtn = createButton("CloseBtn", "X", UDim2.new(1, -36, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(235, 75, 75), TopBar)
+local PlusBtn = createButton("PlusBtn", "+", UDim2.new(1, -72, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(0, 150, 255), TopBar)
+local MinusBtn = createButton("MinusBtn", "-", UDim2.new(1, -108, 0, 9), UDim2.new(0, 26, 0, 24), Color3.fromRGB(0, 110, 210), TopBar)
+
+PlusBtn.MouseButton1Click:Connect(function() UiScale.Scale = math.clamp(UiScale.Scale + 0.1, 0.5, 2.2) end)
+MinusBtn.MouseButton1Click:Connect(function() UiScale.Scale = math.clamp(UiScale.Scale - 0.1, 0.5, 2.2) end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- Gameplay Viewport Frame Area
+local GameArea = Instance.new("Frame")
+GameArea.Name = "GameArea"
+GameArea.Size = UDim2.new(1, -20, 1, -64)
+GameArea.Position = UDim2.new(0, 10, 0, 52)
+GameArea.BackgroundColor3 = Color3.fromRGB(8, 16, 32) -- Deep dark cyber space
+GameArea.ClipsDescendants = true
+GameArea.Parent = MainFrame
+
+local GameCorner = Instance.new("UICorner")
+GameCorner.CornerRadius = UDim.new(0, 18) 
+GameCorner.Parent = GameArea
+
+-- Grid Layout Background Lines Overlay
+local GridPattern = Instance.new("Frame")
+GridPattern.Size = UDim2.new(1, 0, 1, 0)
+GridPattern.BackgroundTransparency = 1
+GridPattern.ZIndex = 1
+GridPattern.Parent = GameArea
+
+local UIGridLayout = Instance.new("UIGridLayout")
+UIGridLayout.CellSize = UDim2.new(0, 40, 0, 40)
+UIGridLayout.CellPadding = UDim2.new(0, 2, 0, 2)
+UIGridLayout.Parent = GridPattern
+
+for i = 1, 90 do
+    local tile = Instance.new("Frame")
+    tile.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+    tile.BackgroundTransparency = 0.94
+    tile.BorderSizePixel = 0
+    tile.Parent = GridPattern
+end
+
+-- Telemetry Overlays
+local ScoreLabel = Instance.new("TextLabel")
+ScoreLabel.Size = UDim2.new(0.5, -20, 0, 30)
+ScoreLabel.Position = UDim2.new(0, 16, 0, 10)
+ScoreLabel.BackgroundTransparency = 1
+ScoreLabel.Text = "SCORE: 0  |  STREAK: 0x"
+ScoreLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScoreLabel.TextSize = 14
+ScoreLabel.Font = Enum.Font.GothamBold
+ScoreLabel.TextXAlignment = Enum.TextXAlignment.Left
+ScoreLabel.ZIndex = 4
+ScoreLabel.Parent = GameArea
+
+local TimerLabel = Instance.new("TextLabel")
+TimerLabel.Size = UDim2.new(0.5, -20, 0, 30)
+TimerLabel.Position = UDim2.new(0.5, 4, 0, 10)
+TimerLabel.BackgroundTransparency = 1
+TimerLabel.Text = "TIME LEFT: 45.0s"
+TimerLabel.TextColor3 = Color3.fromRGB(0, 255, 220)
+TimerLabel.TextSize = 14
+TimerLabel.Font = Enum.Font.GothamBold
+TimerLabel.TextXAlignment = Enum.TextXAlignment.Right
+TimerLabel.ZIndex = 4
+TimerLabel.Parent = GameArea
+
+-- Play Overlay Menu Hub
+local MenuHub = Instance.new("Frame")
+MenuHub.Size = UDim2.new(1, 0, 1, 0)
+MenuHub.BackgroundColor3 = Color3.fromRGB(8, 16, 32)
+MenuHub.BackgroundTransparency = 0.2
+MenuHub.ZIndex = 10
+MenuHub.Parent = GameArea
+
+local StartBtn = Instance.new("TextButton")
+StartBtn.Size = UDim2.new(0, 180, 0, 46)
+StartBtn.Position = UDim2.new(0.5, -90, 0.5, -23)
+StartBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+StartBtn.Text = "START GAME"
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.Font = Enum.Font.GothamBold
+StartBtn.TextSize = 15
+StartBtn.ZIndex = 11
+StartBtn.Parent = MenuHub
+Instance.new("UICorner").Parent = StartBtn
+
+-- Game Mechanics Matrix
+local gameRunning = false
+local currentScore = 0
+local comboStreak = 0
+local roundTimeRemaining = 45.0
+local activeTargets = {}
+local targetSpawnInterval = 0.72
+local currentSpawnTimer = 0
+
+-- Combo Breaker Penalty Logic Mapping
+GameArea.InputBegan:Connect(function(input)
+    if not gameRunning then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local hitTarget = false
+        for _, target in ipairs(activeTargets) do
+            if target and target.Parent then
+                local pX, pY = target.AbsolutePosition.X, target.AbsolutePosition.Y
+                local sX, sY = target.AbsoluteSize.X, target.AbsoluteSize.Y
+                local mX, mY = input.Position.X, input.Position.Y
+                if mX >= pX and mX <= pX + sX and mY >= pY and mY <= pY + sY then
+                    hitTarget = true
+                    break
+                end
+            end
+        end
+        if not hitTarget then
+            comboStreak = 0
+            ScoreLabel.Text = string.format("SCORE: %d  |  STREAK: %dx", currentScore, comboStreak)
+        end
+    end
+end)
+
+local function buildHolographicTarget()
+    if not gameRunning then return end
+
+    local targetSize = math.random(36, 50) 
+    local padding = 20
+    local maxX = GameArea.AbsoluteSize.X - targetSize - padding
+    local maxY = GameArea.AbsoluteSize.Y - targetSize - padding
+    if maxX <= padding then maxX = 450 end
+    if maxY <= 60 then maxY = 220 end
+
+    local randomX = math.random(padding, maxX)
+    local randomY = math.random(50, maxY)
+
+    -- Base Core Object Button profile
+    local TargetObj = Instance.new("TextButton")
+    TargetObj.Name = "ActiveTarget"
+    TargetObj.Size = UDim2.new(0, 0, 0, 0) 
+    TargetObj.Position = UDim2.new(0, randomX + (targetSize/2), 0, randomY + (targetSize/2))
+    TargetObj.Text = ""
+    TargetObj.ZIndex = 3
+    TargetObj.Parent = GameArea
+
+    local TargetCorner = Instance.new("UICorner")
+    TargetCorner.CornerRadius = UDim.new(1, 0) -- Perfect Circle profile
+    TargetCorner.Parent = TargetObj
+
+    local NeonStroke = Instance.new("UIStroke")
+    NeonStroke.Thickness = 3.5
+    NeonStroke.Parent = TargetObj
+
+    local CenterDot = Instance.new("Frame")
+    CenterDot.Size = UDim2.new(0.32, 0, 0.32, 0)
+    CenterDot.Position = UDim2.new(0.34, 0, 0.34, 0)
+    CenterDot.ZIndex = 4
+    CenterDot.Parent = TargetObj
+    Instance.new("UICorner").Parent = CenterDot
+
+    -- SPEED MATRIX MATRIX GENERATOR (Medium -> Extreme Fast)
+    local velocityRoll = math.random(1, 100)
+    local lifespan = 1.5
+    local scoreBonusMultiplier = 1
+
+    if velocityRoll <= 20 then
+        -- 🔥 EXTREMELY FAST (Neon Magenta Danger Profile)
+        lifespan = math.random(38, 58) / 100 -- 0.38s - 0.58s lifespans
+        TargetObj.BackgroundColor3 = Color3.fromRGB(80, 10, 40)
+        TargetObj.BackgroundTransparency = 0.25
+        NeonStroke.Color = Color3.fromRGB(255, 0, 110) -- High warning pink-red outline
+        CenterDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White-hot core
+        scoreBonusMultiplier = 3 -- Triple score reward
+    elseif velocityRoll <= 55 then
+        -- ⚡ FAST (Orange Threat Profile)
+        lifespan = math.random(80, 115) / 100 -- 0.80s - 1.15s lifespans
+        TargetObj.BackgroundColor3 = Color3.fromRGB(90, 50, 10)
+        TargetObj.BackgroundTransparency = 0.3
+        NeonStroke.Color = Color3.fromRGB(255, 160, 0) -- Lightning orange outline
+        CenterDot.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+        scoreBonusMultiplier = 1.5
+    else
+        -- 🟢 MEDIUM (Standard Cyber Cyan Profile)
+        lifespan = math.random(140, 180) / 100 -- 1.40s - 1.80s lifespans
+        TargetObj.BackgroundColor3 = Color3.fromRGB(10, 60, 90)
+        TargetObj.BackgroundTransparency = 0.4
+        NeonStroke.Color = Color3.fromRGB(0, 240, 255) -- Safe electric cyan outline
+        CenterDot.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+        scoreBonusMultiplier = 1
+    end
+
+    table.insert(activeTargets, TargetObj)
+
+    -- Pop Scale-In Intro Tweens
+    TweenService:Create(TargetObj, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, targetSize, 0, targetSize),
+        Position = UDim2.new(0, randomX, 0, randomY)
+    }):Play()
+
+    local targetDestroyed = false
+
+    -- Trigger Click Verification Channels
+    TargetObj.Activated:Connect(function()
+        if targetDestroyed then return end
+        targetDestroyed = true
+
+        comboStreak = comboStreak + 1
+        local standardBaseValue = 10 * scoreBonusMultiplier
+        currentScore = currentScore + math.floor(standardBaseValue * math.clamp(comboStreak, 1, 5))
+        ScoreLabel.Text = string.format("SCORE: %d  |  STREAK: %dx", currentScore, comboStreak)
+
+        -- Instant shatter effect feedback
+        TweenService:Create(TargetObj, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, targetSize * 1.45, 0, targetSize * 1.45),
+            Position = UDim2.new(0, randomX - (targetSize * 0.225), 0, randomY - (targetSize * 0.225)),
+            BackgroundTransparency = 1
+        }):Play()
+        TweenService:Create(NeonStroke, TweenInfo.new(0.12), {Transparency = 1}):Play()
+        TweenService:Create(CenterDot, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+
+        task.delay(0.13, function()
+            TargetObj:Destroy()
+            local index = table.find(activeTargets, TargetObj)
+            if index then table.remove(activeTargets, index) end
+        end)
+    end)
+
+    -- Expired Target Failure Clock
+    task.delay(lifespan, function()
+        if TargetObj and TargetObj.Parent and not targetDestroyed then
+            targetDestroyed = true
+            comboStreak = 0 
+            ScoreLabel.Text = string.format("SCORE: %d  |  STREAK: %dx", currentScore, comboStreak)
+
+            local shrinkTween = TweenService:Create(TargetObj, TweenInfo.new(0.15), {
+                Size = UDim2.new(0, 0, 0, 0),
+                Position = UDim2.new(0, randomX + (targetSize/2), 0, randomY + (targetSize/2))
+            })
+            shrinkTween:Play()
+            shrinkTween.Completed:Connect(function()
+                TargetObj:Destroy()
+                local index = table.find(activeTargets, TargetObj)
+                if index then table.remove(activeTargets, index) end
+            end)
+        end
+    end)
+end
+
+local function concludeMatchSession()
+    gameRunning = false
+    MenuHub.Visible = true
+    StartBtn.Text = "RELOAD SYSTEM"
+    
+    for _, target in ipairs(activeTargets) do
+        if target and target.Parent then target:Destroy() end
+    end
+    activeTargets = {}
+    
+    TimerLabel.Text = "ROUND FINISHED!"
+    ScoreLabel.Text = string.format("FINAL SCORE: %d", currentScore)
+end
+
+local function executeStartPipeline()
+    currentScore = 0
+    comboStreak = 0
+    roundTimeRemaining = 45.0
+    currentSpawnTimer = 0
+    
+    ScoreLabel.Text = "SCORE: 0  |  STREAK: 0x"
+    TimerLabel.Text = "TIME LEFT: 45.0s"
+    
+    MenuHub.Visible = false
+    gameRunning = true
+end
+
+StartBtn.MouseButton1Click:Connect(executeStartPipeline)
+
+-- Core Heartbeat Frame Engine Connect Channel
+local runLoopConnection
+runLoopConnection = RunService.Heartbeat:Connect(function(deltaTime)
+    if not ScreenGui or not ScreenGui.Parent then
+        runLoopConnection:Disconnect()
+        return
+    end
+    
+    -- DYNAMIC ANIMATED BORDER TIMELINE WAVE SHIFTER
+    local runtimeClock = tick()
+    BorderGradient.Rotation = (BorderGradient.Rotation + (deltaTime * 110)) % 360
+    
+    local waveColorCycle = math.sin(runtimeClock * 3.5) * 0.5 + 0.5
+    BorderGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 160, 255):Lerp(Color3.fromRGB(0, 255, 215), waveColorCycle)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 80, 240)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 215):Lerp(Color3.fromRGB(0, 160, 255), waveColorCycle))
+    })
+    
+    if not gameRunning then return end
+    
+    -- Tickdown Match time vectors
+    roundTimeRemaining = roundTimeRemaining - deltaTime
+    if roundTimeRemaining <= 0 then
+        concludeMatchSession()
+        return
+    else
+        TimerLabel.Text = string.format("TIME LEFT: %.1fs", roundTimeRemaining)
+    end
+    
+    -- Automatic scaling spawn triggers
+    currentSpawnTimer = currentSpawnTimer + deltaTime
+    local adaptiveInterval = math.clamp(targetSpawnInterval - (currentScore * 0.0055), 0.25, targetSpawnInterval)
+    
+    if currentSpawnTimer >= adaptiveInterval then
+        currentSpawnTimer = 0
+        buildHolographicTarget()
+    end
+end)
